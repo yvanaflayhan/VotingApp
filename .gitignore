@@ -30,3 +30,9 @@ ehthumbs.db
 .idea/
 *.swp
 *.swo
+
+
+bin/
+obj/
+.vs/
+.vscode/
