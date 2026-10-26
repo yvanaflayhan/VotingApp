@@ -12,7 +12,7 @@ using Voting_app.Data;
 namespace Voting_app.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261020091203_InitialCreate")]
+    [Migration("20261026170811_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -169,12 +169,19 @@ namespace Voting_app.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("text");
 
+                    b.Property<DateOnly>("DateOfBirth")
+                        .HasColumnType("date");
+
                     b.Property<string>("Email")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("boolean");
@@ -267,7 +274,7 @@ namespace Voting_app.Migrations
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<bool>("IsActice")
+                    b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
                     b.Property<DateTime>("StartDate")
