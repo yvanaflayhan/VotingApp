@@ -24,7 +24,7 @@ namespace Voting_app.Models
         [Required]
         public DateTime EndDate {get; set;}
 
-        public bool IsActice {get; set;} = true;
+        public bool IsActive {get; set;} = true;
 
         //user who created this poll
         public string CreatorId {get; set;} = string.Empty;
