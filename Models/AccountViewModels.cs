@@ -6,6 +6,15 @@ namespace Voting_app.Models
     public class RegisterViewModel
     {
         [Required]
+        [Display(Name = "FullName")]
+        public string FullName{get; set;} = string.Empty;
+
+        [Required]
+        [DataType(DataType.Date)]
+        [Display(Name ="Date of Birth")]
+        public DateOnly DateOfBirth{get; set;}
+        
+        [Required]
         [EmailAddress] //to check that the text look like a valid email
         public string Email {get; set;} =string.Empty;
 
