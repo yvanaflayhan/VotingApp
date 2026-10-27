@@ -2,6 +2,7 @@
 
 @{
     ViewData["Title"] = "Login";
+    ViewData["HideChrome"] = true;
 }
 
 <div class="auth-wrapper">
@@ -35,6 +36,10 @@
 
             <p class="text-center mt-4 mb-0">
                 Don't have an account? <a asp-action="Register">Register here</a>
+            </p>
+
+            <p class="text-center mt-3 mb-0">
+                <a asp-controller="Home" asp-action="Index" class="text-muted small">Continue as guest</a>
             </p>
         </div>
     </div>

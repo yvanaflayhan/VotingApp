@@ -55,9 +55,8 @@ body {
   border-color: #4338ca;
 }
 
-/* Login and Register pages */
 .auth-wrapper {
-  min-height: calc(100vh - 220px);
+  min-height: calc(100vh - 1rem);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -74,4 +73,8 @@ body {
 .auth-card .form-control:focus {
   border-color: #4f46e5;
   box-shadow: 0 0 0 .2rem rgba(79, 70, 229, .15);
+}
+
+.auth-card-wide {
+  max-width: 680px;
 }

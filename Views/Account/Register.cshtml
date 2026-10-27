@@ -2,10 +2,11 @@
 
 @{
     ViewData["Title"] = "Register";
+    ViewData["HideChrome"] = true;
 }
 
 <div class="auth-wrapper">
-    <div class="card auth-card shadow">
+    <div class="card auth-card auth-card-wide shadow">
         <div class="card-body p-4 p-md-5">
             <h2 class="text-center fw-bold mb-1">Create account</h2>
             <p class="text-center text-muted mb-4">Join and start voting</p>
@@ -13,47 +14,65 @@
             <form asp-action="Register" method="post">
                 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-                <div class="form-floating mb-3">
-                    <input asp-for="FullName" class="form-control" placeholder="Full Name" />
-                    <label asp-for="FullName"></label>
-                    <span asp-validation-for="FullName" class="text-danger"></span>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input asp-for="FullName" class="form-control" placeholder="Full Name" />
+                            <label asp-for="FullName"></label>
+                        </div>
+                        <span asp-validation-for="FullName" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input asp-for="Username" class="form-control" placeholder="Username" />
+                            <label asp-for="Username"></label>
+                        </div>
+                        <span asp-validation-for="Username" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input asp-for="Email" class="form-control" placeholder="Email" />
+                            <label asp-for="Email"></label>
+                        </div>
+                        <span asp-validation-for="Email" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input asp-for="DateOfBirth" type="date" class="form-control" placeholder="Date of Birth" />
+                            <label asp-for="DateOfBirth"></label>
+                        </div>
+                        <span asp-validation-for="DateOfBirth" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input asp-for="Password" class="form-control" placeholder="Password" />
+                            <label asp-for="Password"></label>
+                        </div>
+                        <span asp-validation-for="Password" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input asp-for="ConfirmPassword" class="form-control" placeholder="Confirm Password" />
+                            <label asp-for="ConfirmPassword"></label>
+                        </div>
+                        <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+                    </div>
                 </div>
 
-                <div class="form-floating mb-3">
-                    <input asp-for="Username" class="form-control" placeholder="Username" />
-                    <label asp-for="Username"></label>
-                    <span asp-validation-for="Username" class="text-danger"></span>
-                </div>
-
-                <div class="form-floating mb-3">
-                    <input asp-for="Email" class="form-control" placeholder="Email" />
-                    <label asp-for="Email"></label>
-                    <span asp-validation-for="Email" class="text-danger"></span>
-                </div>
-
-                <div class="form-floating mb-3">
-                    <input asp-for="DateOfBirth" type="date" class="form-control" placeholder="Date of Birth" />
-                    <label asp-for="DateOfBirth"></label>
-                    <span asp-validation-for="DateOfBirth" class="text-danger"></span>
-                </div>
-
-                <div class="form-floating mb-3">
-                    <input asp-for="Password" class="form-control" placeholder="Password" />
-                    <label asp-for="Password"></label>
-                    <span asp-validation-for="Password" class="text-danger"></span>
-                </div>
-
-                <div class="form-floating mb-3">
-                    <input asp-for="ConfirmPassword" class="form-control" placeholder="Confirm Password" />
-                    <label asp-for="ConfirmPassword"></label>
-                    <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
-                </div>
-
-                <button type="submit" class="btn btn-primary w-100 py-2">Register</button>
+                <button type="submit" class="btn btn-primary w-100 py-2 mt-4">Register</button>
             </form>
 
             <p class="text-center mt-4 mb-0">
                 Already have an account? <a asp-action="Login">Login here</a>
+            </p>
+
+            <p class="text-center mt-3 mb-0">
+                <a asp-controller="Home" asp-action="Index" class="text-muted small">Continue as guest</a>
             </p>
         </div>
     </div>
