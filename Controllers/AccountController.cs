@@ -51,5 +51,42 @@ namespace Voting_app.Controllers
 
             return View(model);
         }
+
+        [HttpGet]
+        public IActionResult Login()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Login(LoginViewModel model)
+        {
+            if(!ModelState.IsValid)
+                return View(model);
+            
+            var result = await _signInManager.PasswordSignInAsync(
+                model.Username,
+                model.Password,
+                model.RememberMe,
+                lockoutOnFailure: false
+            );
+
+            if(result.Succeeded)
+                return RedirectToAction("Index", "Home");
+
+            ModelState.AddModelError(string.Empty, "Wrong Username or password.");
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Logout()
+        {
+            await _signInManager.SignOutAsync();
+            return RedirectToAction("Index" , "Home");
+        }
+
+    
     }
 }
