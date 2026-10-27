@@ -30,7 +30,7 @@ namespace Voting_app.Models
         public string CreatorId {get; set;} = string.Empty;
         public ApplicationUser? Creator {get; set;}
 
-        public ICollection<Choice> Choices {get; set;} = new List<Choice>();
+        public ICollection<Choice> Choices {get; set;} = new List<Choice>();//one poll has a list of choices 
 
     }
     public enum PollType
