@@ -4,35 +4,42 @@
     ViewData["Title"] = "Login";
 }
 
-<div class="row justify-content-center mt-5">
-    <div class="col-md-5">
-        <div class="card-body">
-            <div class="text-center mb-4"> Login </div>
+<div class="auth-wrapper">
+    <div class="card auth-card shadow">
+        <div class="card-body p-4 p-md-5">
+            <h2 class="text-center fw-bold mb-1">Welcome back</h2>
+            <p class="text-center text-muted mb-4">Log in to vote and create polls</p>
+
             <form asp-action="Login" method="post">
                 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-                <div class="mb-3">
-                    <label asp-for="Username" class="form-label"></label>
-                    <input asp-for="Username" class="form-control"/>
+                <div class="form-floating mb-3">
+                    <input asp-for="Username" class="form-control" placeholder="Username" />
+                    <label asp-for="Username"></label>
                     <span asp-validation-for="Username" class="text-danger"></span>
                 </div>
 
-                <div class="mb-3">
-                    <label asp-for="Password" class="form-label"></label>
-                    <input asp-for="Password" class="form-control" type="password"/>
+                <div class="form-floating mb-3">
+                    <input asp-for="Password" class="form-control" placeholder="Password" />
+                    <label asp-for="Password"></label>
                     <span asp-validation-for="Password" class="text-danger"></span>
                 </div>
 
-                <div class="mb-3">
-                    <input asp-for="RememberMe" class="form-check-input"/>
+                <div class="form-check mb-3">
+                    <input asp-for="RememberMe" class="form-check-input" />
                     <label asp-for="RememberMe" class="form-check-label"></label>
                 </div>
 
-                <button type="submit" class="btn btn-success w-100"> Login </button>
+                <button type="submit" class="btn btn-primary w-100 py-2">Login</button>
             </form>
-            <div class="text-center mt-3">
-                <p> Don't have an account? <a asp-action="Register"> Register here </a></p>
-            </div>
+
+            <p class="text-center mt-4 mb-0">
+                Don't have an account? <a asp-action="Register">Register here</a>
+            </p>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
