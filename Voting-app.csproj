@@ -1,10 +1,11 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Voting_app</RootNamespace>
+    <UserSecretsId>b2d46f98-f4c0-4246-8039-f1e629738f15</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
