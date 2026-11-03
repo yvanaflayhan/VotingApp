@@ -32,11 +32,7 @@ body {
   color: transparent;
 }
 
-.navbar-brand {
-  font-weight: 700;
-  color: #4f46e5 !important;
-}
-
+/* ===== Buttons ===== */
 .btn-primary {
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   border: 0;
@@ -56,6 +52,18 @@ body {
 .btn-primary:active {
   transform: translateY(0);
   filter: brightness(.95);
+}
+
+/* Outline buttons in the brand color (role toggle) */
+.btn-outline-primary {
+  --bs-btn-color: #4f46e5;
+  --bs-btn-border-color: #4f46e5;
+  --bs-btn-hover-bg: #4f46e5;
+  --bs-btn-hover-border-color: #4f46e5;
+  --bs-btn-hover-color: #fff;
+  --bs-btn-active-bg: #4f46e5;
+  --bs-btn-active-border-color: #4f46e5;
+  --bs-btn-active-color: #fff;
 }
 
 /* ===== Login and Register pages ===== */
@@ -83,24 +91,6 @@ body {
   box-shadow: 0 0 0 .2rem rgba(79, 70, 229, .15);
 }
 
-/* Background photo with a light white veil */
-body.auth-page {
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.55)),
-    url('/images/vote-bg.jpg') center / cover no-repeat fixed;
-  min-height: 100vh;
-}
-
-.auth-page .auth-card {
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12) !important;
-}
-
-body.auth-page {
-  background: url('/images/vote-bg.svg') center / cover no-repeat fixed;
-  min-height: 100vh;
-}
-
 .auth-card a {
   color: #4f46e5;
   font-weight: 500;
@@ -108,6 +98,16 @@ body.auth-page {
 
 .auth-card a:hover {
   color: #6d28d9;
+}
+
+body.auth-page {
+  background: url('/images/vote-bg.svg') center / cover no-repeat fixed;
+  min-height: 100vh;
+}
+
+.auth-page .auth-card {
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12) !important;
 }
 
 /* ===== Avatars ===== */
@@ -135,7 +135,6 @@ body.auth-page {
 .brand-logo {
   display: inline-flex;
   align-items: center;
-  gap: .6rem;
   user-select: none;
   cursor: default;
 }
@@ -174,41 +173,6 @@ body.auth-page {
 }
 
 /* ===== Users page ===== */
-.users-card {
-  background: #fff;
-  border-radius: 1.25rem;
-  overflow: hidden;
-  /* clips the table corners so they are rounded */
-  box-shadow: 0 8px 30px rgba(17, 24, 39, .07);
-}
-
-.users-table {
-  margin: 0;
-}
-
-.users-table thead th {
-  background: #f8f9fc;
-  font-size: .75rem;
-  text-transform: uppercase;
-  letter-spacing: .6px;
-  color: #6b7280;
-  border-bottom: 1px solid #eef0f4;
-  padding: 1rem 1.25rem;
-}
-
-.users-table td {
-  padding: .95rem 1.25rem;
-  border-bottom: 1px solid #f1f3f7;
-}
-
-.users-table tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-.users-table tbody tr:hover {
-  background: #fafbff;
-}
-
 .stat-chip {
   display: inline-block;
   background: #eef2ff;
@@ -225,6 +189,14 @@ body.auth-page {
   padding-left: 1.1rem;
 }
 
+.users-card {
+  background: #fff;
+  border-radius: 1.25rem;
+  overflow: hidden;
+  /* clips the table corners so they are rounded */
+  box-shadow: 0 8px 30px rgba(17, 24, 39, .07);
+}
+
 /* Role switch: pill shape */
 .role-switch .btn:first-of-type {
   border-radius: 999px 0 0 999px;
@@ -232,6 +204,77 @@ body.auth-page {
 
 .role-switch .btn:last-of-type {
   border-radius: 0 999px 999px 0;
+}
+
+/* ===== Users table (overrides DataTables and Bootstrap) ===== */
+.users-card table.users-table.dataTable {
+  margin: 0 !important;
+  border-collapse: collapse !important;
+  --bs-table-bg: transparent;
+  --bs-table-hover-bg: #fafbff;
+}
+
+.users-card table.users-table.dataTable>thead {
+  --bs-table-bg: #f8f9fc;
+}
+
+.users-card table.users-table.dataTable>thead>tr>th {
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: #6b7280;
+  border-bottom: 1px solid #eef0f4;
+  padding: 1rem 1.25rem;
+}
+
+.users-card table.users-table.dataTable>tbody>tr>td {
+  padding: .95rem 1.25rem;
+  border-bottom: 1px solid #f1f3f7;
+}
+
+.users-card table.users-table.dataTable>tbody>tr:last-child>td {
+  border-bottom: 0;
+}
+
+/* Hide the "Loading..." box */
+.users-card .dataTables_processing {
+  display: none !important;
+}
+
+/* ===== Bottom bar: info on the left, Previous / Next on the right ===== */
+.users-card .dataTables_wrapper .dataTables_info {
+  color: #6b7280;
+  font-size: .85rem;
+  padding: 0;
+}
+
+.users-card .dataTables_wrapper .dataTables_paginate {
+  padding: 0;
+  margin: 0;
+}
+
+/* Previous / Next: pill buttons */
+.users-card .dataTables_paginate ul.pagination {
+  margin: 0;
+  gap: .25rem;
+  --bs-pagination-color: #4f46e5;
+  --bs-pagination-bg: transparent;
+  --bs-pagination-border-width: 0;
+  --bs-pagination-hover-bg: #eef2ff;
+  --bs-pagination-hover-color: #4338ca;
+  --bs-pagination-focus-bg: #eef2ff;
+  --bs-pagination-focus-color: #4338ca;
+  --bs-pagination-focus-box-shadow: none;
+  --bs-pagination-disabled-color: #9ca3af;
+  --bs-pagination-disabled-bg: transparent;
+}
+
+.users-card .dataTables_paginate .page-item .page-link {
+  border: 0;
+  border-radius: 999px !important;
+  padding: .45rem 1.1rem;
+  font-weight: 500;
+  box-shadow: none;
 }
 
 /* ===== Confirmation modal ===== */
@@ -261,35 +304,4 @@ body.auth-page {
 .confirm-modal .btn {
   border-radius: 999px;
   padding: .55rem 1.6rem;
-}
-
-/* ===== Users table ===== */
-.users-table thead th {
-  background: #f8f9fc;
-  font-size: .8rem;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-  color: #6b7280;
-  border-bottom: 1px solid #e5e7eb;
-  padding: .9rem 1rem;
-}
-
-.users-table td {
-  padding: .9rem 1rem;
-}
-
-.search-input {
-  max-width: 260px;
-}
-
-/* Outline buttons in the brand color (role toggle) */
-.btn-outline-primary {
-  --bs-btn-color: #4f46e5;
-  --bs-btn-border-color: #4f46e5;
-  --bs-btn-hover-bg: #4f46e5;
-  --bs-btn-hover-border-color: #4f46e5;
-  --bs-btn-hover-color: #fff;
-  --bs-btn-active-bg: #4f46e5;
-  --bs-btn-active-border-color: #4f46e5;
-  --bs-btn-active-color: #fff;
 }

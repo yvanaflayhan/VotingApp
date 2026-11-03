@@ -1,88 +1,37 @@
-@model List<Voting_app.Models.UserRoleViewModel>
-
 @{
     ViewData["Title"] = "Manage users";
-    var currentUserId = (string?)ViewBag.CurrentUserId;
 }
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.11/css/dataTables.bootstrap5.min.css" />
+}
+
+@Html.AntiForgeryToken()
 
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
     <div>
         <h2 class="fw-bold mb-2">Manage users</h2>
-        <span class="stat-chip">@Model.Count users</span>
-        <span class="stat-chip">@Model.Count(u => u.Role == "Admin") admin(s)</span>
+        <span class="stat-chip" id="totalChip">... users</span>
+        <span class="stat-chip" id="adminChip">... admin(s)</span>
     </div>
-    <input id="userSearch" class="form-control search-input" placeholder="Search users..." />
+
+    <div class="d-flex gap-2">
+        <input id="txtSearch" class="form-control search-input" placeholder="Search users..." />
+        <button type="button" id="btnSearch" class="btn btn-primary rounded-pill px-4">Search</button>
+    </div>
 </div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success border-0 shadow-sm rounded-4">@TempData["Success"]</div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger border-0 shadow-sm rounded-4">@TempData["Error"]</div>
-}
+<div id="msg" class="alert border-0 shadow-sm rounded-4 d-none"></div>
 
 <div class="users-card">
     <div class="table-responsive">
-        <table class="table align-middle users-table">
-            <thead>
-                <tr>
-                    <th>User</th>
-                    <th class="d-none d-md-table-cell">Username</th>
-                    <th class="text-end">Role</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var u in Model)
-                {
-                    var isMe = u.Id == currentUserId;
-                    var display = string.IsNullOrWhiteSpace(u.FullName) ? u.UserName : u.FullName;
-                    var initial = display.Length > 0 ? char.ToUpper(display[0]).ToString() : "?";
-
-                    <tr class="user-row">
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <span class="avatar me-3">@initial</span>
-                                <div>
-                                    <div class="fw-semibold">
-                                        @display
-                                        @if (isMe)
-                                        {
-                                            <span class="badge bg-secondary ms-1">You</span>
-                                        }
-                                    </div>
-                                    <div class="text-muted small">@u.Email</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="d-none d-md-table-cell text-muted">@u.UserName</td>
-                        <td class="text-end">
-                            <form asp-action="ChangeRole" method="post">
-                                <input type="hidden" name="userId" value="@u.Id" />
-                                <div class="btn-group role-switch" role="group">
-                                    <input type="radio" class="btn-check role-radio" name="role" value="User"
-                                           id="user-@u.Id" checked="@(u.Role == "User")" disabled="@isMe"
-                                           data-username="@(u.UserName)" data-original="@u.Role" />
-                                    <label class="btn btn-outline-primary btn-sm px-3" for="user-@u.Id">User</label>
-
-                                    <input type="radio" class="btn-check role-radio" name="role" value="Admin"
-                                           id="admin-@u.Id" checked="@(u.Role == "Admin")" disabled="@isMe"
-                                           data-username="@(u.UserName)" data-original="@u.Role" />
-                                    <label class="btn btn-outline-primary btn-sm px-3" for="admin-@u.Id">Admin</label>
-                                </div>
-                            </form>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        <table id="usersTable" class="table align-middle users-table w-100"></table>
     </div>
 </div>
 
 <!-- Confirmation popup -->
 <div class="modal fade confirm-modal" id="confirmRoleModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-sm-down">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-body text-center p-4 p-md-5">
                 <div class="confirm-icon" id="confirmIcon">
@@ -95,10 +44,8 @@
                 </div>
                 <h4 class="fw-bold mb-3">Change role?</h4>
                 <p class="mb-2">
-                    Do you want to change
-                    <strong id="mUser"></strong>
-                    from <strong id="mFrom"></strong>
-                    to <strong id="mTo"></strong>?
+                    Do you want to change <strong id="mUser"></strong>
+                    from <strong id="mFrom"></strong> to <strong id="mTo"></strong>?
                 </p>
                 <p class="small text-muted mb-4" id="mNote"></p>
                 <div class="d-flex justify-content-center gap-2">
@@ -111,52 +58,175 @@
 </div>
 
 @section Scripts {
+    <script src="https://cdn.datatables.net/1.13.11/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.11/js/dataTables.bootstrap5.min.js"></script>
+
     <script>
+        const csrf = $('input[name="__RequestVerificationToken"]').val();
+
+        // Turns text into safe HTML (the same job as Common.sanatize)
+        const esc = s => String(s ?? '').replace(/[&<>"']/g,
+            c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        function showMessage(text, ok) {
+            $('#msg')
+                .removeClass('d-none alert-success alert-danger')
+                .addClass(ok ? 'alert-success' : 'alert-danger')
+                .text(text);
+            setTimeout(() => $('#msg').addClass('d-none'), 4000);
+        }
+
+        // Update the two counters every time the server answers
+        $('#usersTable').on('xhr.dt', function (e, settings, json) {
+            if (!json) return;
+            $('#totalChip').text(json.recordsTotal + ' users');
+            $('#adminChip').text(json.adminCount + ' admin(s)');
+        });
+
+        const table = $('#usersTable').DataTable({
+            serverSide: true,
+            processing: true,
+            pageLength: 20,
+            lengthChange: false,
+            autoWidth: false,
+            pagingType: 'simple',
+            ordering: false,
+            dom: 'rt<"d-flex justify-content-between align-items-center flex-wrap gap-2 p-3"ip>',
+            language: {
+                processing: false,
+                emptyTable: 'No users found.',
+                zeroRecords: 'No users found.',
+                info: 'Showing _START_ to _END_ of _TOTAL_',
+                infoEmpty: 'No users',
+                paginate: { previous: 'Previous', next: 'Next' }
+            },
+            ajax: {
+                url: '@Url.Action("List", "Admin")',
+                type: 'POST',
+                headers: { 'RequestVerificationToken': csrf },
+                data: function (d) {
+                    const request = {
+                        draw: d.draw,
+                        start: d.start,
+                        length: d.length,
+                        search: $('#txtSearch').val()
+                    };
+                    if (d.order && d.order.length > 0) {
+                        request.column = d.columns[d.order[0].column].data;
+                        request.sort = d.order[0].dir;
+                    }
+                    return request;
+                },
+                error: function (xhr) {
+                    showMessage('Could not load users (error ' + xhr.status + ').', false);
+                }
+            },
+            columns: [
+                {
+                    title: 'User', data: 'fullName',
+                    render: function (data, type, row) {
+                        if (type !== 'display') return data;
+                        const name = esc(data || row.userName);
+                        const initial = esc((data || row.userName || '?').charAt(0).toUpperCase());
+                        const you = row.isMe ? '<span class="badge bg-secondary ms-1">You</span>' : '';
+                        return `<div class="d-flex align-items-center">
+                                            <span class="avatar me-3">${initial}</span>
+                                            <div>
+                                                <div class="fw-semibold">${name}${you}</div>
+                                                <div class="text-muted small">${esc(row.email)}</div>
+                                            </div>
+                                        </div>`;
+                    }
+                },
+                {
+                    title: 'Username', data: 'userName',
+                    className: 'd-none d-md-table-cell text-muted'
+                },
+                {
+                    title: 'Role', data: 'role', orderable: false, className: 'text-end',
+                    render: function (data, type, row) {
+                        if (type !== 'display') return data;
+                        const id = esc(row.id);
+                        const name = esc(row.userName);
+                        const disabled = row.isMe ? 'disabled' : '';
+                        const checked = r => data === r ? 'checked' : '';
+                        return `<div class="btn-group role-switch" role="group">
+                                            <input type="radio" class="btn-check role-radio" name="role-${id}" id="user-${id}"
+                                                   value="User" ${checked('User')} ${disabled}
+                                                   data-id="${id}" data-username="${name}" data-original="${esc(data)}" />
+                                            <label class="btn btn-outline-primary btn-sm px-3" for="user-${id}">User</label>
+
+                                            <input type="radio" class="btn-check role-radio" name="role-${id}" id="admin-${id}"
+                                                   value="Admin" ${checked('Admin')} ${disabled}
+                                                   data-id="${id}" data-username="${name}" data-original="${esc(data)}" />
+                                            <label class="btn btn-outline-primary btn-sm px-3" for="admin-${id}">Admin</label>
+                                        </div>`;
+                    }
+                }
+            ]
+        });
+
+        // ----- Search: reload the table, back to page 1 -----
+        $('#btnSearch').on('click', () => table.ajax.reload());
+        $('#txtSearch').on('keydown', e => { if (e.key === 'Enter') table.ajax.reload(); });
+
+        // ----- Role change with confirmation -----
         const modalEl = document.getElementById('confirmRoleModal');
         const modal = new bootstrap.Modal(modalEl);
-        const confirmBtn = document.getElementById('confirmRoleBtn');
         let pendingRadio = null;
         let confirmed = false;
 
-        document.querySelectorAll('.role-radio').forEach(radio => {
-            radio.addEventListener('change', () => {
-                pendingRadio = radio;
-                confirmed = false;
+        // The rows are redrawn by AJAX, so the event is attached to the table, not to each radio
+        $('#usersTable').on('change', '.role-radio', function () {
+            pendingRadio = this;
+            confirmed = false;
 
-                // textContent: the username is shown as plain text, never as HTML
-                document.getElementById('mUser').textContent = radio.dataset.username;
-                document.getElementById('mFrom').textContent = radio.dataset.original;
-                document.getElementById('mTo').textContent = radio.value;
+            $('#mUser').text(this.dataset.username);
+            $('#mFrom').text(this.dataset.original);
+            $('#mTo').text(this.value);
 
-                const toAdmin = radio.value === 'Admin';
-                document.getElementById('confirmIcon').classList.toggle('warn', toAdmin);
-                document.getElementById('mNote').textContent = toAdmin
-                    ? 'Admins can manage all users and polls.'
-                    : 'They will lose access to the admin pages.';
+            const toAdmin = this.value === 'Admin';
+            $('#confirmIcon').toggleClass('warn', toAdmin);
+            $('#mNote').text(toAdmin
+                ? 'Admins can manage all users and polls.'
+                : 'They will lose access to the admin pages.');
 
-                modal.show();
-            });
+            modal.show();
         });
 
-        confirmBtn.addEventListener('click', () => {
+        $('#confirmRoleBtn').on('click', async () => {
             confirmed = true;
-            pendingRadio.form.submit();
+            modal.hide();
+
+            const body = new URLSearchParams({
+                userId: pendingRadio.dataset.id,
+                role: pendingRadio.value
+            });
+
+            try {
+                const response = await fetch('@Url.Action("ChangeRole", "Admin")', {
+                    method: 'POST',
+                    headers: {
+                        'RequestVerificationToken': csrf,
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body
+                });
+                const result = await response.json();
+                showMessage(result.message, result.success);
+            } catch {
+                showMessage('Something went wrong. Please try again.', false);
+            }
+
+            table.ajax.reload(null, false);   // false = stay on the same page
         });
 
-        // Closed without confirming (Cancel, X, or click outside): restore the old value
+        // Closed without confirming (Cancel, X, outside click): put the old value back
         modalEl.addEventListener('hidden.bs.modal', () => {
             if (!confirmed && pendingRadio) {
-                pendingRadio.form
-                    .querySelector(`input[value="${pendingRadio.dataset.original}"]`).checked = true;
+                $(pendingRadio).closest('.btn-group')
+                    .find(`input[value="${pendingRadio.dataset.original}"]`).prop('checked', true);
             }
-        });
-
-        // Search filter
-        document.getElementById('userSearch').addEventListener('input', e => {
-            const q = e.target.value.toLowerCase();
-            document.querySelectorAll('.user-row').forEach(row => {
-                row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
-            });
         });
     </script>
 }

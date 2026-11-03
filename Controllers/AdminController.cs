@@ -7,7 +7,7 @@ using Voting_app.Models;
 namespace Voting_app.Controllers
 {
     [Authorize(Roles = "Admin")]
-    public class AdminController : Controller 
+    public class AdminController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
 
@@ -15,26 +15,75 @@ namespace Voting_app.Controllers
         {
             _userManager = userManager;
         }
-        public async Task<IActionResult> Users()
+
+        // Only shows the empty page. The table fills itself with AJAX.
+        public IActionResult Users()
         {
-            var users = await _userManager.Users.OrderBy(u => u.UserName).ToListAsync();
-            var list = new List<UserRoleViewModel>();
-            foreach (var u in users)
-            {
-                var roles = await _userManager.GetRolesAsync(u);
-                list.Add(new UserRoleViewModel
-                {
-                    Id = u.Id,
-                    UserName = u.UserName ?? "",
-                    Email = u.Email ?? "",
-                    FullName = u.FullName,
-                    Role = roles.Contains("Admin") ? "Admin" : "User"
-                });
-            }
-            ViewBag.CurrentUserId = _userManager.GetUserId(User);
-            return View(list);
+            return View();
         }
 
+        // Called by DataTables for every page, sort and search
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> List([FromForm] DataTableRequest request)
+        {
+            var length = Math.Clamp(request.Length, 1, 100);
+            var start = Math.Max(0, request.Start);
+
+            var query = _userManager.Users.AsQueryable();
+            var recordsTotal = await query.CountAsync();
+
+            if (!string.IsNullOrWhiteSpace(request.Search))
+            {
+                var term = $"%{request.Search.Trim()}%";
+                query = query.Where(u =>
+                    EF.Functions.ILike(u.UserName!, term) ||
+                    EF.Functions.ILike(u.Email!, term) ||
+                    EF.Functions.ILike(u.FullName, term));
+            }
+
+            var recordsFiltered = await query.CountAsync();
+
+            // Only columns from this fixed list can be sorted
+            var desc = request.Sort == "desc";
+            IOrderedQueryable<ApplicationUser> ordered = request.Column switch
+            {
+                "fullName" => desc ? query.OrderByDescending(u => u.FullName) : query.OrderBy(u => u.FullName),
+                _          => desc ? query.OrderByDescending(u => u.UserName) : query.OrderBy(u => u.UserName)
+            };
+
+            var users = await ordered
+                .ThenBy(u => u.Id)          // keeps the order stable when values are equal
+                .Skip(start)
+                .Take(length)
+                .ToListAsync();
+
+            var adminIds = (await _userManager.GetUsersInRoleAsync("Admin"))
+                .Select(u => u.Id)
+                .ToHashSet();
+            var currentUserId = _userManager.GetUserId(User);
+
+            var data = users.Select(u => new
+            {
+                id = u.Id,
+                fullName = u.FullName,
+                userName = u.UserName,
+                email = u.Email,
+                role = adminIds.Contains(u.Id) ? "Admin" : "User",
+                isMe = u.Id == currentUserId
+            });
+
+            return Json(new
+            {
+                draw = request.Draw,
+                recordsTotal,
+                recordsFiltered,
+                adminCount = adminIds.Count,
+                data
+            });
+        }
+
+        // Now answers with JSON instead of redirecting, because the page no longer reloads
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ChangeRole(string userId, string role)
@@ -46,36 +95,25 @@ namespace Voting_app.Controllers
             if (user == null)
                 return NotFound();
 
-            // Rule 2: an admin cannot change their own role
+            // Rule 1: an admin cannot change their own role
             if (userId == _userManager.GetUserId(User))
-            {
-                TempData["Error"] = "You cannot change your own role.";
-                return RedirectToAction(nameof(Users));
-            }
+                return Json(new { success = false, message = "You cannot change your own role." });
 
-            // Rule 1: at least one admin must always exist
+            // Rule 2: at least one admin must always exist
             var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
             if (isAdmin && role == "User")
             {
                 var admins = await _userManager.GetUsersInRoleAsync("Admin");
                 if (admins.Count <= 1)
-                {
-                    TempData["Error"] = "There must always be at least one admin.";
-                    return RedirectToAction(nameof(Users));
-                }
+                    return Json(new { success = false, message = "There must always be at least one admin." });
             }
 
-            // Remove the old role(s), then add the new one
             var currentRoles = await _userManager.GetRolesAsync(user);
             await _userManager.RemoveFromRolesAsync(user, currentRoles);
             await _userManager.AddToRoleAsync(user, role);
-
-            // Makes the old login cookie invalid so the new role applies
             await _userManager.UpdateSecurityStampAsync(user);
 
-            TempData["Success"] = $"{user.UserName} is now {role}.";
-            return RedirectToAction(nameof(Users));
+            return Json(new { success = true, message = $"{user.UserName} is now {role}." });
         }
-        
     }
 }
