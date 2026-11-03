@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection.Metadata;
 using Microsoft.AspNetCore.Mvc;
 using Voting_app.Models;
 
@@ -8,6 +9,8 @@ public class HomeController : Controller
 {
     public IActionResult Index()
     {
+        if(User.Identity?.IsAuthenticated != true)
+            return RedirectToAction("Login" , "Account");
         return View();
     }
 
