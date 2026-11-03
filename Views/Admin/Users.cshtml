@@ -5,56 +5,71 @@
     var currentUserId = (string?)ViewBag.CurrentUserId;
 }
 
-<h2 class="fw-bold mb-4">Manage users</h2>
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h2 class="fw-bold mb-2">Manage users</h2>
+        <span class="stat-chip">@Model.Count users</span>
+        <span class="stat-chip">@Model.Count(u => u.Role == "Admin") admin(s)</span>
+    </div>
+    <input id="userSearch" class="form-control search-input" placeholder="Search users..." />
+</div>
 
 @if (TempData["Success"] != null)
 {
-    <div class="alert alert-success">@TempData["Success"]</div>
+    <div class="alert alert-success border-0 shadow-sm rounded-4">@TempData["Success"]</div>
 }
 @if (TempData["Error"] != null)
 {
-    <div class="alert alert-danger">@TempData["Error"]</div>
+    <div class="alert alert-danger border-0 shadow-sm rounded-4">@TempData["Error"]</div>
 }
 
-<div class="card border-0 shadow-sm">
+<div class="users-card">
     <div class="table-responsive">
-        <table class="table align-middle mb-0">
-            <thead class="table-light">
+        <table class="table align-middle users-table">
+            <thead>
                 <tr>
-                    <th>Full name</th>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Role</th>
+                    <th>User</th>
+                    <th class="d-none d-md-table-cell">Username</th>
+                    <th class="text-end">Role</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var u in Model)
                 {
                     var isMe = u.Id == currentUserId;
-                    <tr>
-                        <td>@u.FullName</td>
+                    var display = string.IsNullOrWhiteSpace(u.FullName) ? u.UserName : u.FullName;
+                    var initial = display.Length > 0 ? char.ToUpper(display[0]).ToString() : "?";
+
+                    <tr class="user-row">
                         <td>
-                            @u.UserName
-                            @if (isMe)
-                            {
-                                <span class="badge bg-secondary ms-1">You</span>
-                            }
+                            <div class="d-flex align-items-center">
+                                <span class="avatar me-3">@initial</span>
+                                <div>
+                                    <div class="fw-semibold">
+                                        @display
+                                        @if (isMe)
+                                        {
+                                            <span class="badge bg-secondary ms-1">You</span>
+                                        }
+                                    </div>
+                                    <div class="text-muted small">@u.Email</div>
+                                </div>
+                            </div>
                         </td>
-                        <td>@u.Email</td>
-                        <td>
+                        <td class="d-none d-md-table-cell text-muted">@u.UserName</td>
+                        <td class="text-end">
                             <form asp-action="ChangeRole" method="post">
                                 <input type="hidden" name="userId" value="@u.Id" />
+                                <div class="btn-group role-switch" role="group">
+                                    <input type="radio" class="btn-check role-radio" name="role" value="User"
+                                           id="user-@u.Id" checked="@(u.Role == "User")" disabled="@isMe"
+                                           data-username="@(u.UserName)" data-original="@u.Role" />
+                                    <label class="btn btn-outline-primary btn-sm px-3" for="user-@u.Id">User</label>
 
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="role" value="User" id="user-@u.Id"
-                                           checked="@(u.Role == "User")" disabled="@isMe" onchange="this.form.submit()" />
-                                    <label class="form-check-label" for="user-@u.Id">User</label>
-                                </div>
-
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="role" value="Admin" id="admin-@u.Id"
-                                           checked="@(u.Role == "Admin")" disabled="@isMe" onchange="this.form.submit()" />
-                                    <label class="form-check-label" for="admin-@u.Id">Admin</label>
+                                    <input type="radio" class="btn-check role-radio" name="role" value="Admin"
+                                           id="admin-@u.Id" checked="@(u.Role == "Admin")" disabled="@isMe"
+                                           data-username="@(u.UserName)" data-original="@u.Role" />
+                                    <label class="btn btn-outline-primary btn-sm px-3" for="admin-@u.Id">Admin</label>
                                 </div>
                             </form>
                         </td>
@@ -64,3 +79,84 @@
         </table>
     </div>
 </div>
+
+<!-- Confirmation popup -->
+<div class="modal fade confirm-modal" id="confirmRoleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm-down">
+        <div class="modal-content">
+            <div class="modal-body text-center p-4 p-md-5">
+                <div class="confirm-icon" id="confirmIcon">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M22 11l-3 3-2-2" />
+                    </svg>
+                </div>
+                <h4 class="fw-bold mb-3">Change role?</h4>
+                <p class="mb-2">
+                    Do you want to change
+                    <strong id="mUser"></strong>
+                    from <strong id="mFrom"></strong>
+                    to <strong id="mTo"></strong>?
+                </p>
+                <p class="small text-muted mb-4" id="mNote"></p>
+                <div class="d-flex justify-content-center gap-2">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmRoleBtn">Yes, change</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const modalEl = document.getElementById('confirmRoleModal');
+        const modal = new bootstrap.Modal(modalEl);
+        const confirmBtn = document.getElementById('confirmRoleBtn');
+        let pendingRadio = null;
+        let confirmed = false;
+
+        document.querySelectorAll('.role-radio').forEach(radio => {
+            radio.addEventListener('change', () => {
+                pendingRadio = radio;
+                confirmed = false;
+
+                // textContent: the username is shown as plain text, never as HTML
+                document.getElementById('mUser').textContent = radio.dataset.username;
+                document.getElementById('mFrom').textContent = radio.dataset.original;
+                document.getElementById('mTo').textContent = radio.value;
+
+                const toAdmin = radio.value === 'Admin';
+                document.getElementById('confirmIcon').classList.toggle('warn', toAdmin);
+                document.getElementById('mNote').textContent = toAdmin
+                    ? 'Admins can manage all users and polls.'
+                    : 'They will lose access to the admin pages.';
+
+                modal.show();
+            });
+        });
+
+        confirmBtn.addEventListener('click', () => {
+            confirmed = true;
+            pendingRadio.form.submit();
+        });
+
+        // Closed without confirming (Cancel, X, or click outside): restore the old value
+        modalEl.addEventListener('hidden.bs.modal', () => {
+            if (!confirmed && pendingRadio) {
+                pendingRadio.form
+                    .querySelector(`input[value="${pendingRadio.dataset.original}"]`).checked = true;
+            }
+        });
+
+        // Search filter
+        document.getElementById('userSearch').addEventListener('input', e => {
+            const q = e.target.value.toLowerCase();
+            document.querySelectorAll('.user-row').forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+            });
+        });
+    </script>
+}
