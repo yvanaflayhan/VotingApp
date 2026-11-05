@@ -5,6 +5,7 @@ namespace Voting_app.Data
 {
     public static class DbSeeder
     {
+        public const string RootAdminUserName = "admin";
         public static async Task SeedAsync(IServiceProvider services, IConfiguration config)
         {
             var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
