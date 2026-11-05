@@ -1,0 +1,129 @@
+@{
+    var type = (Voting_app.Models.PollType)ViewBag.Type;
+    var heading = type == Voting_app.Models.PollType.Awards ? "Awards polls" : "Community polls";
+    ViewData["Title"] = heading;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.11/css/dataTables.bootstrap5.min.css" />
+}
+
+@Html.AntiForgeryToken()
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h2 class="fw-bold mb-2">@heading</h2>
+        <span class="stat-chip" id="totalChip">... polls</span>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <div class="search-group">
+            <input id="txtSearch" class="form-control search-input" placeholder="Search polls..." />
+            <button type="button" id="btnSearch" class="btn btn-primary rounded-pill px-4">Search</button>
+        </div>
+        @if (User.IsInRole("Admin"))
+        {
+            <a class="btn btn-primary rounded-pill px-4" asp-action="Create">+ New poll</a>
+        }
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success border-0 shadow-sm rounded-4">@TempData["Success"]</div>
+}
+<div id="msg" class="alert alert-danger border-0 shadow-sm rounded-4 d-none"></div>
+
+<div class="users-card">
+    <div class="table-responsive">
+        <table id="pollsTable" class="table align-middle users-table w-100"></table>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/1.13.11/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.11/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+        const csrf = $('input[name="__RequestVerificationToken"]').val();
+        const pollType = '@type';
+
+        const esc = s => String(s ?? '').replace(/[&<>"']/g,
+            c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        $('#pollsTable').on('xhr.dt', function (e, settings, json) {
+            if (json) $('#totalChip').text(json.recordsTotal + ' polls');
+        });
+
+        const table = $('#pollsTable').DataTable({
+            serverSide: true,
+            processing: false,
+            pageLength: 20,
+            lengthChange: false,
+            autoWidth: false,
+            pagingType: 'simple',
+            ordering: false,
+            dom: 'rt<"d-flex justify-content-between align-items-center flex-wrap gap-2 p-3"ip>',
+            language: {
+                emptyTable: 'No polls yet.',
+                zeroRecords: 'No polls found.',
+                info: 'Showing _START_ to _END_ of _TOTAL_',
+                infoEmpty: 'No polls',
+                paginate: { previous: 'Previous', next: 'Next' }
+            },
+            ajax: {
+                url: '@Url.Action("List", "Polls")',
+                type: 'POST',
+                headers: { 'RequestVerificationToken': csrf },
+                data: function (d) {
+                    return {
+                        draw: d.draw,
+                        start: d.start,
+                        length: d.length,
+                        search: $('#txtSearch').val(),
+                        type: pollType
+                    };
+                },
+                error: function (xhr) {
+                    $('#msg').removeClass('d-none').text('Could not load polls (error ' + xhr.status + ').');
+                }
+            },
+            columns: [
+                {
+                    title: 'Poll', data: 'title', width: '45%',
+                    render: function (data, type, row) {
+                        if (type !== 'display') return data;
+                        const desc = row.description || '';
+                        const short = desc.length > 90 ? desc.substring(0, 90) + '...' : desc;
+                        return `<div class="fw-semibold">${esc(data)}</div>
+                                                                    <div class="text-muted small">${esc(short)}</div>`;
+                    }
+                },
+                { title: 'Choices', data: 'choices', width: '10%', className: 'text-center' },
+                { title: 'Votes', data: 'votes', width: '10%', className: 'text-center' },
+                {
+                    title: 'Ends', data: 'endDate', width: '20%',
+                    render: function (data, type) {
+                        if (type !== 'display') return data;
+                        return esc(new Date(data).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }));
+                    }
+                },
+                {
+                    title: 'Status', data: 'status', width: '15%', className: 'text-end',
+                    render: function (data, type) {
+                        if (type !== 'display') return data;
+                        const style = {
+                            Open: 'bg-success-subtle text-success',
+                            Upcoming: 'bg-warning-subtle text-warning-emphasis',
+                            Closed: 'bg-secondary-subtle text-secondary'
+                        }[data] || 'bg-secondary-subtle text-secondary';
+                        return `<span class="badge ${style} rounded-pill px-3">${esc(data)}</span>`;
+                    }
+                }
+            ]
+        });
+
+        $('#btnSearch').on('click', () => table.ajax.reload());
+        $('#txtSearch').on('keydown', e => { if (e.key === 'Enter') table.ajax.reload(); });
+    </script>
+}

@@ -305,3 +305,101 @@ body.auth-page {
   border-radius: 999px;
   padding: .55rem 1.6rem;
 }
+
+.search-group {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: .5rem;
+}
+
+.search-group .search-input {
+  width: 260px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.search-group .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ===== Create poll ===== */
+.create-card {
+  max-width: 720px;
+}
+
+.type-card {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  height: 100%;
+  padding: 1rem 1.1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 1rem;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+
+.type-card span {
+  color: #6b7280;
+  font-size: .85rem;
+}
+
+.type-card:hover {
+  border-color: #c7d2fe;
+}
+
+.btn-check:checked+.type-card {
+  border-color: #4f46e5;
+  background: #eef2ff;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, .15);
+}
+
+.btn-check:focus-visible+.type-card {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+.choice-row {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  margin-bottom: .6rem;
+}
+
+.choice-num {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-weight: 600;
+  font-size: .85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-remove {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.btn-remove:hover:not(:disabled) {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.btn-remove:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
