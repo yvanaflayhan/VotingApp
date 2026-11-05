@@ -1,0 +1,193 @@
+@using Voting_app.Models
+@model CreatePollViewModel
+
+@{
+    ViewData["Title"] = "New poll";
+    var choices = Model.Choices.Count >= 2 ? Model.Choices : new List<string> { "", "" };
+}
+
+<div class="d-flex justify-content-center py-3">
+    <div class="card border-0 shadow-sm rounded-4 w-100 create-card">
+        <div class="card-body p-4 p-md-5">
+            <h2 class="fw-bold mb-1">Create a poll</h2>
+            <p class="text-muted mb-4">Choose a type, set the dates and add the choices.</p>
+
+            <form asp-action="Create" method="post" enctype="multipart/form-data">
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                <input type="hidden" asp-for="TimezoneOffset" id="TimezoneOffset" />
+
+                <!-- Type -->
+                <label class="form-label fw-semibold">Type</label>
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <input type="radio" class="btn-check" name="Type" id="typeCommunity" value="Community"
+                               checked="@(Model.Type != PollType.Awards)" />
+                        <label class="type-card" for="typeCommunity">
+                            <strong>Community</strong>
+                            <span>Questions and opinions from everyone</span>
+                        </label>
+                    </div>
+                    <div class="col-6">
+                        <input type="radio" class="btn-check" name="Type" id="typeAwards" value="Awards"
+                               checked="@(Model.Type == PollType.Awards)" />
+                        <label class="type-card" for="typeAwards">
+                            <strong>Awards</strong>
+                            <span>Vote for the best in a category</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Title and description -->
+                <div class="mb-3">
+                    <label asp-for="Title" class="form-label fw-semibold"></label>
+                    <input asp-for="Title" class="form-control" maxlength="150" placeholder="What is your question?" />
+                    <span asp-validation-for="Title" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-4">
+                    <label asp-for="Description" class="form-label fw-semibold"></label>
+                    <textarea asp-for="Description" class="form-control" rows="3" maxlength="1000"
+                              placeholder="Optional: add some context"></textarea>
+                    <span asp-validation-for="Description" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">
+                        Photo <span class="text-muted fw-normal">(optional, JPG / PNG / WEBP, max 2 MB)</span>
+                    </label>
+                    <input type="file" name="Image" id="Image" class="form-control"
+                           accept="image/png,image/jpeg,image/webp" />
+                    <span asp-validation-for="Image" class="text-danger small d-block"></span>
+                    <img id="imagePreview" class="image-preview d-none" alt="Preview" />
+                </div>
+
+                <!-- Dates -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label asp-for="StartDate" class="form-label fw-semibold"></label>
+                        <input asp-for="StartDate" type="datetime-local" id="StartDate"
+                               asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" />
+                        <span asp-validation-for="StartDate" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="EndDate" class="form-label fw-semibold"></label>
+                        <input asp-for="EndDate" type="datetime-local" id="EndDate" asp-format="{0:yyyy-MM-ddTHH:mm}"
+                               class="form-control" />
+                        <span asp-validation-for="EndDate" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                <!-- Choices -->
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label fw-semibold mb-0">Choices</label>
+                    <span class="text-muted small" id="choiceCount"></span>
+                </div>
+
+                <div id="choiceList">
+                    @for (var i = 0; i < choices.Count; i++)
+                    {
+                        <div class="choice-row">
+                            <span class="choice-num">@(i + 1)</span>
+                            <input name="Choices" class="form-control" maxlength="200" value="@choices[i]"
+                                   placeholder="Choice" />
+                            <button type="button" class="btn-remove" aria-label="Remove choice">&times;</button>
+                        </div>
+                    }
+                </div>
+                <span asp-validation-for="Choices" class="text-danger small d-block"></span>
+
+                <button type="button" id="addChoice" class="btn btn-outline-primary btn-sm rounded-pill px-3 mt-2">
+                    + Add choice
+                </button>
+
+                <hr class="my-4" />
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Create poll</button>
+                    <a class="btn btn-outline-secondary rounded-pill px-4" asp-action="Community">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<template id="choiceTemplate">
+    <div class="choice-row">
+        <span class="choice-num"></span>
+        <input name="Choices" class="form-control" maxlength="200" placeholder="Choice" />
+        <button type="button" class="btn-remove" aria-label="Remove choice">&times;</button>
+    </div>
+</template>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        const MIN = 2, MAX = 10;
+        const list = document.getElementById('choiceList');
+        const addBtn = document.getElementById('addChoice');
+        const counter = document.getElementById('choiceCount');
+        const template = document.getElementById('choiceTemplate');
+
+        // Numbers the rows, locks the remove buttons at 2 choices, hides Add at 10
+        function refresh() {
+            const rows = list.querySelectorAll('.choice-row');
+            rows.forEach((row, i) => {
+                row.querySelector('.choice-num').textContent = i + 1;
+                row.querySelector('.btn-remove').disabled = rows.length <= MIN;
+            });
+            addBtn.style.display = rows.length >= MAX ? 'none' : '';
+            counter.textContent = rows.length + ' of ' + MAX;
+        }
+
+        addBtn.addEventListener('click', () => {
+            list.appendChild(template.content.cloneNode(true));
+            refresh();
+            list.lastElementChild.querySelector('input').focus();
+        });
+
+        // One listener on the list, because rows are added and removed
+        list.addEventListener('click', e => {
+            const btn = e.target.closest('.btn-remove');
+            if (btn && !btn.disabled) {
+                btn.closest('.choice-row').remove();
+                refresh();
+            }
+        });
+
+        // Pressing Enter in a choice adds a new one instead of submitting the form
+        list.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && e.target.matches('input')) {
+                e.preventDefault();
+                if (list.querySelectorAll('.choice-row').length < MAX) addBtn.click();
+            }
+        });
+
+        // Default dates, in the browser's own time
+        const pad = n => String(n).padStart(2, '0');
+        const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        const start = document.getElementById('StartDate');
+        const end = document.getElementById('EndDate');
+        if (!start.value) start.value = fmt(new Date());
+        if (!end.value) end.value = fmt(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+
+        document.getElementById('TimezoneOffset').value = new Date().getTimezoneOffset();
+
+        // Photo preview + size check before uploading
+        document.getElementById('Image').addEventListener('change', e => {
+            const file = e.target.files[0];
+            const img = document.getElementById('imagePreview');
+            if (!file) { img.classList.add('d-none'); return; }
+            if (file.size > 2 * 1024 * 1024) {
+                alert('The photo must be 2 MB or smaller.');
+                e.target.value = '';
+                img.classList.add('d-none');
+                return;
+            }
+            img.src = URL.createObjectURL(file);
+            img.classList.remove('d-none');
+        });
+
+        refresh();
+    </script>
+}

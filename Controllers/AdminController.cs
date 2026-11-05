@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Voting_app.Data;
 using Voting_app.Models;
 
 namespace Voting_app.Controllers
@@ -16,13 +17,11 @@ namespace Voting_app.Controllers
             _userManager = userManager;
         }
 
-        // Only shows the empty page. The table fills itself with AJAX.
         public IActionResult Users()
         {
             return View();
         }
 
-        // Called by DataTables for every page, sort and search
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> List([FromForm] DataTableRequest request)
@@ -44,16 +43,9 @@ namespace Voting_app.Controllers
 
             var recordsFiltered = await query.CountAsync();
 
-            // Only columns from this fixed list can be sorted
-            var desc = request.Sort == "desc";
-            IOrderedQueryable<ApplicationUser> ordered = request.Column switch
-            {
-                "fullName" => desc ? query.OrderByDescending(u => u.FullName) : query.OrderBy(u => u.FullName),
-                _          => desc ? query.OrderByDescending(u => u.UserName) : query.OrderBy(u => u.UserName)
-            };
-
-            var users = await ordered
-                .ThenBy(u => u.Id)          // keeps the order stable when values are equal
+            var users = await query
+                .OrderBy(u => u.UserName)
+                .ThenBy(u => u.Id)
                 .Skip(start)
                 .Take(length)
                 .ToListAsync();
@@ -70,7 +62,8 @@ namespace Voting_app.Controllers
                 userName = u.UserName,
                 email = u.Email,
                 role = adminIds.Contains(u.Id) ? "Admin" : "User",
-                isMe = u.Id == currentUserId
+                isMe = u.Id == currentUserId,
+                isRoot = IsRootAdmin(u)
             });
 
             return Json(new
@@ -83,7 +76,6 @@ namespace Voting_app.Controllers
             });
         }
 
-        // Now answers with JSON instead of redirecting, because the page no longer reloads
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ChangeRole(string userId, string role)
@@ -95,25 +87,36 @@ namespace Voting_app.Controllers
             if (user == null)
                 return NotFound();
 
-            // Rule 1: an admin cannot change their own role
+            // Rule 1: the main admin can never be changed, by anyone
+            if (IsRootAdmin(user))
+                return Json(new { success = false, message = "The main admin cannot be changed." });
+
+            // Rule 2: nobody changes their own role
             if (userId == _userManager.GetUserId(User))
                 return Json(new { success = false, message = "You cannot change your own role." });
 
-            // Rule 2: at least one admin must always exist
+            // Nothing to do if the user already has this role
             var isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
-            if (isAdmin && role == "User")
-            {
-                var admins = await _userManager.GetUsersInRoleAsync("Admin");
-                if (admins.Count <= 1)
-                    return Json(new { success = false, message = "There must always be at least one admin." });
-            }
+            if ((role == "Admin") == isAdmin)
+                return Json(new { success = false, message = $"{user.UserName} is already {(isAdmin ? "an admin" : "a user")}." });
 
             var currentRoles = await _userManager.GetRolesAsync(user);
             await _userManager.RemoveFromRolesAsync(user, currentRoles);
             await _userManager.AddToRoleAsync(user, role);
+
+            // Invalidates the old login cookie, so the new role applies on the next request
             await _userManager.UpdateSecurityStampAsync(user);
 
-            return Json(new { success = true, message = $"{user.UserName} is now {role}." });
+            return Json(new
+            {
+                success = true,
+                message = role == "Admin"
+                    ? $"{user.UserName} is now an admin."
+                    : $"{user.UserName} is no longer an admin."
+            });
         }
+
+        private static bool IsRootAdmin(ApplicationUser u) =>
+            string.Equals(u.UserName, DbSeeder.RootAdminUserName, StringComparison.OrdinalIgnoreCase);
     }
 }

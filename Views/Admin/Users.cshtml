@@ -15,7 +15,7 @@
         <span class="stat-chip" id="adminChip">... admin(s)</span>
     </div>
 
-    <div class="d-flex gap-2">
+    <div class="search-group">
         <input id="txtSearch" class="form-control search-input" placeholder="Search users..." />
         <button type="button" id="btnSearch" class="btn btn-primary rounded-pill px-4">Search</button>
     </div>
@@ -64,7 +64,7 @@
     <script>
         const csrf = $('input[name="__RequestVerificationToken"]').val();
 
-        // Turns text into safe HTML (the same job as Common.sanatize)
+        // Turns text into safe HTML
         const esc = s => String(s ?? '').replace(/[&<>"']/g,
             c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -85,7 +85,7 @@
 
         const table = $('#usersTable').DataTable({
             serverSide: true,
-            processing: true,
+            processing: false,
             pageLength: 20,
             lengthChange: false,
             autoWidth: false,
@@ -93,7 +93,6 @@
             ordering: false,
             dom: 'rt<"d-flex justify-content-between align-items-center flex-wrap gap-2 p-3"ip>',
             language: {
-                processing: false,
                 emptyTable: 'No users found.',
                 zeroRecords: 'No users found.',
                 info: 'Showing _START_ to _END_ of _TOTAL_',
@@ -105,17 +104,12 @@
                 type: 'POST',
                 headers: { 'RequestVerificationToken': csrf },
                 data: function (d) {
-                    const request = {
+                    return {
                         draw: d.draw,
                         start: d.start,
                         length: d.length,
                         search: $('#txtSearch').val()
                     };
-                    if (d.order && d.order.length > 0) {
-                        request.column = d.columns[d.order[0].column].data;
-                        request.sort = d.order[0].dir;
-                    }
-                    return request;
                 },
                 error: function (xhr) {
                     showMessage('Could not load users (error ' + xhr.status + ').', false);
@@ -123,44 +117,46 @@
             },
             columns: [
                 {
-                    title: 'User', data: 'fullName',
+                    title: 'User', data: 'fullName', width: '45%',
                     render: function (data, type, row) {
                         if (type !== 'display') return data;
                         const name = esc(data || row.userName);
                         const initial = esc((data || row.userName || '?').charAt(0).toUpperCase());
                         const you = row.isMe ? '<span class="badge bg-secondary ms-1">You</span>' : '';
+                        const root = row.isRoot ? '<span class="badge bg-primary ms-1">Main admin</span>' : '';
                         return `<div class="d-flex align-items-center">
-                                            <span class="avatar me-3">${initial}</span>
-                                            <div>
-                                                <div class="fw-semibold">${name}${you}</div>
-                                                <div class="text-muted small">${esc(row.email)}</div>
-                                            </div>
-                                        </div>`;
+                                    <span class="avatar me-3">${initial}</span>
+                                    <div>
+                                        <div class="fw-semibold">${name}${root}${you}</div>
+                                        <div class="text-muted small">${esc(row.email)}</div>
+                                    </div>
+                                </div>`;
                     }
                 },
                 {
-                    title: 'Username', data: 'userName',
+                    title: 'Username', data: 'userName', width: '25%',
                     className: 'd-none d-md-table-cell text-muted'
                 },
                 {
-                    title: 'Role', data: 'role', orderable: false, className: 'text-end',
+                    title: 'Role', data: 'role', width: '30%', className: 'text-end',
                     render: function (data, type, row) {
                         if (type !== 'display') return data;
                         const id = esc(row.id);
                         const name = esc(row.userName);
-                        const disabled = row.isMe ? 'disabled' : '';
+                        // Disabled for the main admin (never changeable) and for yourself
+                        const disabled = (row.isMe || row.isRoot) ? 'disabled' : '';
                         const checked = r => data === r ? 'checked' : '';
                         return `<div class="btn-group role-switch" role="group">
-                                            <input type="radio" class="btn-check role-radio" name="role-${id}" id="user-${id}"
-                                                   value="User" ${checked('User')} ${disabled}
-                                                   data-id="${id}" data-username="${name}" data-original="${esc(data)}" />
-                                            <label class="btn btn-outline-primary btn-sm px-3" for="user-${id}">User</label>
+                                    <input type="radio" class="btn-check role-radio" name="role-${id}" id="user-${id}"
+                                           value="User" ${checked('User')} ${disabled}
+                                           data-id="${id}" data-username="${name}" data-original="${esc(data)}" />
+                                    <label class="btn btn-outline-primary btn-sm px-3" for="user-${id}">User</label>
 
-                                            <input type="radio" class="btn-check role-radio" name="role-${id}" id="admin-${id}"
-                                                   value="Admin" ${checked('Admin')} ${disabled}
-                                                   data-id="${id}" data-username="${name}" data-original="${esc(data)}" />
-                                            <label class="btn btn-outline-primary btn-sm px-3" for="admin-${id}">Admin</label>
-                                        </div>`;
+                                    <input type="radio" class="btn-check role-radio" name="role-${id}" id="admin-${id}"
+                                           value="Admin" ${checked('Admin')} ${disabled}
+                                           data-id="${id}" data-username="${name}" data-original="${esc(data)}" />
+                                    <label class="btn btn-outline-primary btn-sm px-3" for="admin-${id}">Admin</label>
+                                </div>`;
                     }
                 }
             ]
@@ -189,7 +185,7 @@
             $('#confirmIcon').toggleClass('warn', toAdmin);
             $('#mNote').text(toAdmin
                 ? 'Admins can manage all users and polls.'
-                : 'They will lose access to the admin pages.');
+                : 'They will become a normal user and lose access to the admin pages.');
 
             modal.show();
         });
