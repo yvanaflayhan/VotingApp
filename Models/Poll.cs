@@ -17,6 +17,9 @@ namespace Voting_app.Models
         [Required]
         public PollType Type {get; set;}
 
+        [StringLength(300)]
+        public string? ImagePath { get; set; }
+
         public DateTime CreatedAt {get; set;} = DateTime.UtcNow;
 
         [Required]
