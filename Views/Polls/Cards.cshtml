@@ -1,0 +1,110 @@
+@{
+    var type = (Voting_app.Models.PollType)ViewBag.Type;
+    var heading = type == Voting_app.Models.PollType.Awards ? "Awards polls" : "Community polls";
+    ViewData["Title"] = heading;
+}
+
+@Html.AntiForgeryToken()
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h2 class="fw-bold mb-2">@heading</h2>
+        <span class="stat-chip" id="totalChip">... polls</span>
+    </div>
+    <div class="search-group">
+        <input id="txtSearch" class="form-control search-input" placeholder="Search polls..." />
+        <button type="button" id="btnSearch" class="btn btn-primary rounded-pill px-4">Search</button>
+    </div>
+</div>
+
+<div id="msg" class="alert alert-danger border-0 shadow-sm rounded-4 d-none"></div>
+
+<div class="row g-4" id="cards"></div>
+
+<div id="empty" class="text-center text-muted py-5 d-none">No polls found.</div>
+
+<div class="text-center mt-4">
+    <button type="button" id="loadMore" class="btn btn-outline-primary rounded-pill px-4 d-none">Load more</button>
+</div>
+
+@section Scripts {
+    <script>
+        const csrf = $('input[name="__RequestVerificationToken"]').val();
+        const pollType = '@type';
+        const PAGE_SIZE = 12;
+        const detailsUrl = '@Url.Action("Details", "Polls")';
+        let loaded = 0;
+
+        const esc = s => String(s ?? '').replace(/[&<>"']/g,
+            c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        const badge = {
+            Open: 'bg-success-subtle text-success',
+            Upcoming: 'bg-warning-subtle text-warning-emphasis',
+            Closed: 'bg-secondary-subtle text-secondary'
+        };
+
+        function cardHtml(p) {
+            const cover = p.imageUrl
+                ? `<img class="poll-cover" src="${esc(p.imageUrl)}" alt="" loading="lazy" />`
+                : `<div class="poll-cover poll-cover-ph">${esc((p.title || '?').charAt(0).toUpperCase())}</div>`;
+            const desc = p.description || '';
+            const short = desc.length > 110 ? desc.substring(0, 110) + '...' : desc;
+            const ends = new Date(p.endDate).toLocaleDateString([], { dateStyle: 'medium' });
+
+            return `<div class="col-md-6 col-lg-4">
+                    <a class="poll-card" href="${detailsUrl}/${p.id}">
+                        ${cover}
+                        <div class="poll-body">
+                            <span class="badge ${badge[p.status] || badge.Closed} rounded-pill px-3 mb-2">${esc(p.status)}</span>
+                            <h5 class="fw-bold mb-1">${esc(p.title)}</h5>
+                            <p class="text-muted small mb-0">${esc(short)}</p>
+                        </div>
+                        <div class="poll-footer">
+                            <span>${p.choices} choices</span>
+                            <span>${p.votes} votes</span>
+                            <span>Ends ${esc(ends)}</span>
+                        </div>
+                    </a>
+                </div>`;
+        }
+
+        async function load(reset) {
+            if (reset) { loaded = 0; $('#cards').empty(); }
+
+            const body = new URLSearchParams({
+                draw: 1,
+                start: loaded,
+                length: PAGE_SIZE,
+                search: $('#txtSearch').val(),
+                type: pollType
+            });
+
+            try {
+                const response = await fetch('@Url.Action("List", "Polls")', {
+                    method: 'POST',
+                    headers: { 'RequestVerificationToken': csrf, 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body
+                });
+                if (!response.ok) throw new Error(response.status);
+                const json = await response.json();
+
+                json.data.forEach(p => $('#cards').append(cardHtml(p)));
+                loaded += json.data.length;
+
+                $('#totalChip').text(json.recordsTotal + ' polls');
+                $('#empty').toggleClass('d-none', loaded > 0);
+                $('#loadMore').toggleClass('d-none', loaded >= json.recordsFiltered);
+                $('#msg').addClass('d-none');
+            } catch (e) {
+                $('#msg').removeClass('d-none').text('Could not load polls. Please try again.');
+            }
+        }
+
+        $('#btnSearch').on('click', () => load(true));
+        $('#txtSearch').on('keydown', e => { if (e.key === 'Enter') load(true); });
+        $('#loadMore').on('click', () => load(false));
+
+        load(true);
+    </script>
+}

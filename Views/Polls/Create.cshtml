@@ -12,7 +12,7 @@
             <h2 class="fw-bold mb-1">Create a poll</h2>
             <p class="text-muted mb-4">Choose a type, set the dates and add the choices.</p>
 
-            <form asp-action="Create" method="post">
+            <form asp-action="Create" method="post" enctype="multipart/form-data">
                 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
                 <input type="hidden" asp-for="TimezoneOffset" id="TimezoneOffset" />
 
@@ -49,6 +49,16 @@
                     <textarea asp-for="Description" class="form-control" rows="3" maxlength="1000"
                               placeholder="Optional: add some context"></textarea>
                     <span asp-validation-for="Description" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">
+                        Photo <span class="text-muted fw-normal">(optional, JPG / PNG / WEBP, max 2 MB)</span>
+                    </label>
+                    <input type="file" name="Image" id="Image" class="form-control"
+                           accept="image/png,image/jpeg,image/webp" />
+                    <span asp-validation-for="Image" class="text-danger small d-block"></span>
+                    <img id="imagePreview" class="image-preview d-none" alt="Preview" />
                 </div>
 
                 <!-- Dates -->
@@ -162,6 +172,21 @@
         if (!end.value) end.value = fmt(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
 
         document.getElementById('TimezoneOffset').value = new Date().getTimezoneOffset();
+
+        // Photo preview + size check before uploading
+        document.getElementById('Image').addEventListener('change', e => {
+            const file = e.target.files[0];
+            const img = document.getElementById('imagePreview');
+            if (!file) { img.classList.add('d-none'); return; }
+            if (file.size > 2 * 1024 * 1024) {
+                alert('The photo must be 2 MB or smaller.');
+                e.target.value = '';
+                img.classList.add('d-none');
+                return;
+            }
+            img.src = URL.createObjectURL(file);
+            img.classList.remove('d-none');
+        });
 
         refresh();
     </script>

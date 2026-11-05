@@ -90,26 +90,34 @@
             },
             columns: [
                 {
-                    title: 'Poll', data: 'title', width: '45%',
+                    title: 'Poll', data: 'title', width: '38%',
                     render: function (data, type, row) {
                         if (type !== 'display') return data;
                         const desc = row.description || '';
-                        const short = desc.length > 90 ? desc.substring(0, 90) + '...' : desc;
-                        return `<div class="fw-semibold">${esc(data)}</div>
-                                                                    <div class="text-muted small">${esc(short)}</div>`;
+                        const short = desc.length > 80 ? desc.substring(0, 80) + '...' : desc;
+                        const thumb = row.imageUrl
+                            ? `<img class="poll-thumb" src="${esc(row.imageUrl)}" alt="" />`
+                            : `<span class="poll-thumb poll-thumb-ph">${esc((data || '?').charAt(0).toUpperCase())}</span>`;
+                        return `<div class="d-flex align-items-center gap-3">
+                                ${thumb}
+                                <div>
+                                    <div class="fw-semibold">${esc(data)}</div>
+                                    <div class="text-muted small">${esc(short)}</div>
+                                </div>
+                            </div>`;
                     }
                 },
-                { title: 'Choices', data: 'choices', width: '10%', className: 'text-center' },
-                { title: 'Votes', data: 'votes', width: '10%', className: 'text-center' },
+                { title: 'Choices', data: 'choices', width: '9%', className: 'text-center' },
+                { title: 'Votes', data: 'votes', width: '9%', className: 'text-center' },
                 {
-                    title: 'Ends', data: 'endDate', width: '20%',
+                    title: 'Ends', data: 'endDate', width: '18%',
                     render: function (data, type) {
                         if (type !== 'display') return data;
                         return esc(new Date(data).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }));
                     }
                 },
                 {
-                    title: 'Status', data: 'status', width: '15%', className: 'text-end',
+                    title: 'Status', data: 'status', width: '12%', className: 'text-center',
                     render: function (data, type) {
                         if (type !== 'display') return data;
                         const style = {
@@ -118,6 +126,14 @@
                             Closed: 'bg-secondary-subtle text-secondary'
                         }[data] || 'bg-secondary-subtle text-secondary';
                         return `<span class="badge ${style} rounded-pill px-3">${esc(data)}</span>`;
+                    }
+                },
+                {
+                    title: '', data: 'id', width: '14%', className: 'text-end', orderable: false,
+                    render: function (data, type) {
+                        if (type !== 'display') return data;
+                        return `<a class="btn btn-outline-primary btn-sm rounded-pill px-3"
+                               href="@Url.Action("Details", "Polls")/${data}">Details</a>`;
                     }
                 }
             ]

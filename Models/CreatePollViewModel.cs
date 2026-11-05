@@ -22,6 +22,8 @@ namespace Voting_app.Models
         [Display(Name = "End date")]
         public DateTime? EndDate { get; set; }
 
+        public IFormFile? Image { get; set; }
+
         // Minutes between UTC and the browser's time, sent by JavaScript
         public int TimezoneOffset { get; set; }
 
