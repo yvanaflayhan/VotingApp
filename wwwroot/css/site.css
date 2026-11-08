@@ -550,3 +550,269 @@ body.auth-page {
   border-radius: 999px;
   background: #eef0f4;
 }
+
+/* ===== Poll cards grid (DataTables) ===== */
+.cards-table {
+  width: 100%;
+  border: 0;
+  background: transparent;
+}
+
+.cards-table thead {
+  display: none;
+}
+
+.cards-table tbody {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* 3 cards per line */
+  gap: 1.5rem;
+}
+
+.cards-table tbody tr {
+  display: flex;
+  background: transparent !important;
+}
+
+.cards-table tbody td {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.cards-table tbody tr:has(.dataTables_empty) {
+  grid-column: 1 / -1;
+  /* "No polls" spans the whole row */
+}
+
+.cards-table .dataTables_empty {
+  justify-content: center;
+  padding: 3rem 0;
+  color: #6b7280;
+}
+
+@media (max-width: 991.98px) {
+  .cards-table tbody {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 575.98px) {
+  .cards-table tbody {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== The card ===== */
+.cards-table .poll-card {
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+.poll-head {
+  padding: 1.1rem 1.25rem .85rem;
+}
+
+.poll-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: .55rem 0 0;
+}
+
+.poll-title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.poll-title a:hover {
+  color: #4f46e5;
+}
+
+.poll-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 1rem 1.25rem .25rem;
+}
+
+.poll-options {
+  flex: 1;
+}
+
+/* Option lines with percentages */
+.opt-line {
+  margin-bottom: .7rem;
+}
+
+.opt-top {
+  display: flex;
+  justify-content: space-between;
+  gap: .5rem;
+  font-size: .85rem;
+  margin-bottom: .25rem;
+}
+
+.opt-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opt-line .progress {
+  height: 7px;
+  border-radius: 999px;
+  background: #eef0f4;
+}
+
+.opt-line .progress-bar {
+  border-radius: 999px;
+  background: #c7d2fe;
+  transition: width .8s cubic-bezier(.2, .8, .2, 1);
+}
+
+.opt-line.mine .progress-bar {
+  background: linear-gradient(90deg, #4f46e5, #7c3aed);
+}
+
+.poll-more {
+  text-align: center;
+  font-size: .8rem;
+  color: #6b7280;
+  margin-bottom: .4rem;
+}
+
+/* Vote button in the middle */
+.poll-action {
+  text-align: center;
+  padding: .8rem 0 1rem;
+}
+
+.poll-action .btn {
+  min-width: 150px;
+}
+
+.poll-note {
+  color: #6b7280;
+  font-size: .9rem;
+}
+
+/* ===== Options inside the vote popup ===== */
+.vote-choice {
+  display: block;
+  position: relative;
+  margin: 0 0 .55rem;
+  cursor: pointer;
+  animation: choiceIn .3s ease both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+@keyframes choiceIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.vote-choice input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.vote-choice span {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  padding: .7rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 999px;
+  background: #fff;
+  font-weight: 500;
+  transition: border-color .15s ease, background .15s ease, color .15s ease;
+}
+
+.vote-choice span::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid #c7d2fe;
+}
+
+.vote-choice:hover span {
+  border-color: #c7d2fe;
+}
+
+.vote-choice input:checked+span {
+  border-color: #4f46e5;
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.vote-choice input:checked+span::before {
+  border-color: #4f46e5;
+  background: #4f46e5;
+  box-shadow: inset 0 0 0 3px #eef2ff;
+}
+
+.vote-choice input:focus-visible+span {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+/* ===== Previous / Next under the cards ===== */
+.cards-wrap .dataTables_info {
+  color: #6b7280;
+  font-size: .85rem;
+  padding: 0;
+}
+
+.cards-wrap .dataTables_paginate {
+  padding: 0;
+  margin: 0;
+}
+
+.cards-wrap .dataTables_paginate ul.pagination {
+  margin: 0;
+  gap: .25rem;
+  --bs-pagination-color: #4f46e5;
+  --bs-pagination-bg: transparent;
+  --bs-pagination-border-width: 0;
+  --bs-pagination-hover-bg: #eef2ff;
+  --bs-pagination-hover-color: #4338ca;
+  --bs-pagination-focus-bg: #eef2ff;
+  --bs-pagination-focus-color: #4338ca;
+  --bs-pagination-focus-box-shadow: none;
+  --bs-pagination-disabled-color: #9ca3af;
+  --bs-pagination-disabled-bg: transparent;
+}
+
+.cards-wrap .dataTables_paginate .page-item .page-link {
+  border: 0;
+  border-radius: 999px !important;
+  padding: .45rem 1.1rem;
+  font-weight: 500;
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .vote-choice,
+  .opt-line .progress-bar {
+    animation: none;
+    transition: none;
+  }
+}

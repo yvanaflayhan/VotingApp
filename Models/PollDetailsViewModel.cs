@@ -12,11 +12,14 @@ namespace Voting_app.Models
         public string Status { get; set; } = "";
         public string CreatorName { get; set; } = "";
         public int TotalVotes { get; set; }
+        public bool IsAuthenticated{get; set;}
+        public int? MyChoiceId{get; set;}
         public List<ChoiceResult> Choices { get; set; } = new();
     }
 
     public class ChoiceResult
     {
+        public int Id {get; set;}
         public string Text { get; set; } = "";
         public int Votes { get; set; }
         public int Percent { get; set; }

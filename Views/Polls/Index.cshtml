@@ -23,7 +23,7 @@
         </div>
         @if (User.IsInRole("Admin"))
         {
-            <a class="btn btn-primary rounded-pill px-4" asp-action="Create">+ New poll</a>
+            <a class="btn btn-primary rounded-pill px-4" asp-action="Create" asp-route-type="@type">+ New poll</a>
         }
     </div>
 </div>
@@ -99,12 +99,12 @@
                             ? `<img class="poll-thumb" src="${esc(row.imageUrl)}" alt="" />`
                             : `<span class="poll-thumb poll-thumb-ph">${esc((data || '?').charAt(0).toUpperCase())}</span>`;
                         return `<div class="d-flex align-items-center gap-3">
-                                ${thumb}
-                                <div>
-                                    <div class="fw-semibold">${esc(data)}</div>
-                                    <div class="text-muted small">${esc(short)}</div>
-                                </div>
-                            </div>`;
+                                    ${thumb}
+                                    <div>
+                                        <div class="fw-semibold">${esc(data)}</div>
+                                        <div class="text-muted small">${esc(short)}</div>
+                                    </div>
+                                </div>`;
                     }
                 },
                 { title: 'Choices', data: 'choices', width: '9%', className: 'text-center' },
@@ -133,7 +133,7 @@
                     render: function (data, type) {
                         if (type !== 'display') return data;
                         return `<a class="btn btn-outline-primary btn-sm rounded-pill px-3"
-                               href="@Url.Action("Details", "Polls")/${data}">Details</a>`;
+                                   href="@Url.Action("Details", "Polls")/${data}">Details</a>`;
                     }
                 }
             ]
