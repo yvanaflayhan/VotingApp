@@ -104,7 +104,8 @@
 
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-primary rounded-pill px-4">Create poll</button>
-                    <a class="btn btn-outline-secondary rounded-pill px-4" asp-action="Community">Cancel</a>
+                    <a class="btn btn-outline-secondary rounded-pill px-4"
+                       asp-action="@(Model.Type == Voting_app.Models.PollType.Awards ? "Awards" : "Community")">Cancel</a>
                 </div>
             </form>
         </div>

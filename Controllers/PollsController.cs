@@ -21,7 +21,9 @@ namespace Voting_app.Controllers
             _env = env;
         }
 
-        // ===== Public pages: guests included =====
+        // =====================================================
+        // Public pages: guests included (no [Authorize])
+        // =====================================================
 
         public IActionResult Community() => ShowPolls(PollType.Community);
         public IActionResult Awards()    => ShowPolls(PollType.Awards);
@@ -34,46 +36,92 @@ namespace Voting_app.Controllers
         }
 
         [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> List([FromForm] PollTableRequest request)
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> List([FromForm] PollTableRequest request)
+{
+    var length = Math.Clamp(request.Length, 1, 100);
+    var start = Math.Max(0, request.Start);
+    var now = DateTime.UtcNow;
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+    var query = _db.Polls.Where(p => p.IsActive && p.Type == request.Type);
+    var recordsTotal = await query.CountAsync();
+
+    if (!string.IsNullOrWhiteSpace(request.Search))
+    {
+        var term = $"%{request.Search.Trim()}%";
+        query = query.Where(p =>
+            EF.Functions.ILike(p.Title, term) ||
+            EF.Functions.ILike(p.Description, term));
+    }
+
+    var recordsFiltered = await query.CountAsync();
+
+    // 1) The polls of this page, with their choices
+    var page = await query
+        .OrderByDescending(p => p.CreatedAt)
+        .ThenBy(p => p.Id)
+        .Skip(start)
+        .Take(length)
+        .Select(p => new
         {
-            var length = Math.Clamp(request.Length, 1, 100);
-            var start = Math.Max(0, request.Start);
-            var now = DateTime.UtcNow;
+            p.Id,
+            p.Title,
+            p.Description,
+            p.ImagePath,
+            p.StartDate,
+            p.EndDate,
+            Choices = p.Choices.OrderBy(c => c.Id).Select(c => new { c.Id, c.Text }).ToList()
+        })
+        .ToListAsync();
 
-            var query = _db.Polls.Where(p => p.IsActive && p.Type == request.Type);
-            var recordsTotal = await query.CountAsync();
+    var pollIds = page.Select(p => p.Id).ToList();
 
-            if (!string.IsNullOrWhiteSpace(request.Search))
+    // 2) Votes per choice for all the polls of this page: one query
+    var counts = await _db.Votes
+        .Where(v => pollIds.Contains(v.PollId))
+        .GroupBy(v => v.ChoiceId)
+        .Select(g => new { ChoiceId = g.Key, Count = g.Count() })
+        .ToDictionaryAsync(x => x.ChoiceId, x => x.Count);
+
+    // 3) What this user already voted in these polls: one query
+    var myVotes = userId == null
+        ? new Dictionary<int, int>()
+        : await _db.Votes
+            .Where(v => v.UserId == userId && pollIds.Contains(v.PollId))
+            .ToDictionaryAsync(v => v.PollId, v => v.ChoiceId);
+
+    var rows = page.Select(p =>
+    {
+        var total = p.Choices.Sum(c => counts.GetValueOrDefault(c.Id));
+        return new
+        {
+            id = p.Id,
+            title = p.Title,
+            description = p.Description,
+            imageUrl = p.ImagePath,
+            choices = p.Choices.Count,          // the admin table uses this number
+            votes = total,
+            startDate = p.StartDate,
+            endDate = p.EndDate,
+            status = p.StartDate > now ? "Upcoming" : (p.EndDate < now ? "Closed" : "Open"),
+            myChoiceId = myVotes.TryGetValue(p.Id, out var mine) ? (int?)mine : null,
+            options = p.Choices.Select(c =>
             {
-                var term = $"%{request.Search.Trim()}%";
-                query = query.Where(p =>
-                    EF.Functions.ILike(p.Title, term) ||
-                    EF.Functions.ILike(p.Description, term));
-            }
-
-            var recordsFiltered = await query.CountAsync();
-
-            var rows = await query
-                .OrderByDescending(p => p.CreatedAt)
-                .ThenBy(p => p.Id)
-                .Skip(start)
-                .Take(length)
-                .Select(p => new
+                var v = counts.GetValueOrDefault(c.Id);
+                return new
                 {
-                    id = p.Id,
-                    title = p.Title,
-                    description = p.Description,
-                    imageUrl = p.ImagePath,
-                    choices = p.Choices.Count,
-                    votes = _db.Votes.Count(v => v.PollId == p.Id),
-                    endDate = p.EndDate,
-                    status = p.StartDate > now ? "Upcoming" : (p.EndDate < now ? "Closed" : "Open")
-                })
-                .ToListAsync();
+                    id = c.Id,
+                    text = c.Text,
+                    votes = v,
+                    percent = total == 0 ? 0 : (int)Math.Round(v * 100.0 / total)
+                };
+            }).ToList()
+        };
+    }).ToList();
 
-            return Json(new { draw = request.Draw, recordsTotal, recordsFiltered, data = rows });
-        }
+    return Json(new { draw = request.Draw, recordsTotal, recordsFiltered, data = rows });
+}
 
         // Everybody can open the details (guests too). Only the admin can see inactive polls.
         public async Task<IActionResult> Details(int id)
@@ -88,6 +136,7 @@ namespace Voting_app.Controllers
             if (poll == null)
                 return NotFound();
 
+            // Votes per choice, counted in one grouped query
             var counts = await _db.Votes
                 .Where(v => v.PollId == id)
                 .GroupBy(v => v.ChoiceId)
@@ -96,6 +145,13 @@ namespace Voting_app.Controllers
 
             var total = counts.Values.Sum();
             var now = DateTime.UtcNow;
+
+            // The choice this user voted for (null for guests and for users who have not voted)
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            int? myChoiceId = userId == null ? null : await _db.Votes
+                .Where(v => v.PollId == id && v.UserId == userId)
+                .Select(v => (int?)v.ChoiceId)
+                .FirstOrDefaultAsync();
 
             var model = new PollDetailsViewModel
             {
@@ -109,6 +165,8 @@ namespace Voting_app.Controllers
                 Status = poll.StartDate > now ? "Upcoming" : (poll.EndDate < now ? "Closed" : "Open"),
                 CreatorName = poll.Creator?.UserName ?? "",
                 TotalVotes = total,
+                IsAuthenticated = User.Identity?.IsAuthenticated == true,
+                MyChoiceId = myChoiceId,
                 Choices = poll.Choices
                     .OrderBy(c => c.Id)
                     .Select(c =>
@@ -116,6 +174,7 @@ namespace Voting_app.Controllers
                         var votes = counts.GetValueOrDefault(c.Id);
                         return new ChoiceResult
                         {
+                            Id = c.Id,
                             Text = c.Text,
                             Votes = votes,
                             Percent = total == 0 ? 0 : (int)Math.Round(votes * 100.0 / total)
@@ -126,12 +185,87 @@ namespace Voting_app.Controllers
             return View(model);
         }
 
-        // ===== Admin only =====
+        // =====================================================
+        // Voting: any logged-in user (admins included)
+        // =====================================================
+
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Vote(int pollId, int choiceId)
+        {
+            // The voter comes from the login cookie, never from the form
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var now = DateTime.UtcNow;
+
+            // Admins manage polls, they do not vote
+            if (User.IsInRole("Admin"))
+            return Json(new { success = false, message = "Admins manage polls and cannot vote." });
+
+            var poll = await _db.Polls
+                .Include(p => p.Choices)
+                .FirstOrDefaultAsync(p => p.Id == pollId && p.IsActive);
+
+            if (poll == null)
+                return NotFound();
+
+            if (poll.StartDate > now)
+                return Json(new { success = false, message = "This poll has not started yet." });
+
+            if (poll.EndDate < now)
+                return Json(new { success = false, message = "This poll has ended." });
+
+            // The choice must belong to THIS poll
+            if (!poll.Choices.Any(c => c.Id == choiceId))
+                return Json(new { success = false, message = "Invalid choice." });
+
+            if (await _db.Votes.AnyAsync(v => v.PollId == pollId && v.UserId == userId))
+                return Json(new { success = false, message = "You have already voted in this poll." });
+
+            _db.Votes.Add(new Vote { UserId = userId, PollId = pollId, ChoiceId = choiceId });
+
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // Two clicks at the same moment: the unique index (UserId, PollId) refused the second one
+                return Json(new { success = false, message = "You have already voted in this poll." });
+            }
+
+            // Send back the fresh results so the card can show them without reloading
+var counts = await _db.Votes
+    .Where(v => v.PollId == pollId)
+    .GroupBy(v => v.ChoiceId)
+    .Select(g => new { ChoiceId = g.Key, Count = g.Count() })
+    .ToDictionaryAsync(x => x.ChoiceId, x => x.Count);
+
+var total = counts.Values.Sum();
+var options = poll.Choices.OrderBy(c => c.Id).Select(c =>
+{
+    var v = counts.GetValueOrDefault(c.Id);
+    return new
+    {
+        id = c.Id,
+        text = c.Text,
+        votes = v,
+        percent = total == 0 ? 0 : (int)Math.Round(v * 100.0 / total)
+    };
+}).ToList();
+
+return Json(new { success = true, message = "Your vote was saved.", myChoiceId = choiceId, votes = total, options });
+        }
+
+        // =====================================================
+        // Create poll: admin only
+        // =====================================================
 
         [Authorize(Roles = "Admin")]
-        public IActionResult Create()
+        public IActionResult Create(PollType? type)
         {
-            return View(new CreatePollViewModel());
+            // The form opens with the type of the page the admin came from
+            return View(new CreatePollViewModel { Type = type ?? PollType.Community });
         }
 
         [Authorize(Roles = "Admin")]
@@ -140,6 +274,7 @@ namespace Voting_app.Controllers
         [RequestSizeLimit(3_000_000)]
         public async Task<IActionResult> Create(CreatePollViewModel model)
         {
+            // Choices: trim, remove empty ones, remove duplicates (ignoring case)
             var choices = model.Choices
                 .Select(c => (c ?? "").Trim())
                 .Where(c => c.Length > 0)
@@ -153,6 +288,7 @@ namespace Voting_app.Controllers
             else if (choices.Any(c => c.Length > 200))
                 ModelState.AddModelError(nameof(model.Choices), "Each choice can have at most 200 characters.");
 
+            // Dates: the browser sends local time, the database stores UTC
             var offset = Math.Clamp(model.TimezoneOffset, -840, 840);
             DateTime? startUtc = model.StartDate.HasValue ? ToUtc(model.StartDate.Value, offset) : null;
             DateTime? endUtc = model.EndDate.HasValue ? ToUtc(model.EndDate.Value, offset) : null;
@@ -193,11 +329,11 @@ namespace Voting_app.Controllers
             try
             {
                 _db.Polls.Add(poll);
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync();     // saves the poll AND its choices together
             }
             catch
             {
-                DeleteImage(imagePath);     // do not leave an orphan file if the save failed
+                DeleteImage(imagePath);           // do not leave an orphan file if the save failed
                 throw;
             }
 
@@ -207,8 +343,11 @@ namespace Voting_app.Controllers
                 : RedirectToAction(nameof(Community));
         }
 
-        // ===== Helpers =====
+        // =====================================================
+        // Helpers
+        // =====================================================
 
+        // The browser's getTimezoneOffset() = UTC minus local, in minutes
         private static DateTime ToUtc(DateTime local, int offsetMinutes)
             => DateTime.SpecifyKind(local.AddMinutes(offsetMinutes), DateTimeKind.Utc);
 

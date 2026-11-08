@@ -4,6 +4,10 @@
     ViewData["Title"] = heading;
 }
 
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.11/css/dataTables.bootstrap5.min.css" />
+}
+
 @Html.AntiForgeryToken()
 
 <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
@@ -19,21 +23,56 @@
 
 <div id="msg" class="alert alert-danger border-0 shadow-sm rounded-4 d-none"></div>
 
-<div class="row g-4" id="cards"></div>
+<div class="cards-wrap">
+    <table id="pollsTable" class="cards-table"></table>
+</div>
 
-<div id="empty" class="text-center text-muted py-5 d-none">No polls found.</div>
+<!-- Vote popup -->
+<div class="modal fade confirm-modal" id="voteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body p-4 p-md-5">
+                <div class="text-center">
+                    <div class="confirm-icon">
+                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                            <polyline points="22 4 12 14.01 9 11.01" />
+                        </svg>
+                    </div>
+                    <h4 class="fw-bold mb-1">Cast your vote</h4>
+                    <p class="text-muted mb-4" id="vTitle"></p>
+                </div>
 
-<div class="text-center mt-4">
-    <button type="button" id="loadMore" class="btn btn-outline-primary rounded-pill px-4 d-none">Load more</button>
+                <div id="vOptions"></div>
+
+                <p class="small text-muted text-center mt-3 mb-0" id="vNote"></p>
+                <div class="text-danger small text-center mt-2 d-none" id="vError"></div>
+
+                <div class="d-flex justify-content-center gap-2 mt-4">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="vConfirm" disabled>Yes, vote</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
+    <script src="https://cdn.datatables.net/1.13.11/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.11/js/dataTables.bootstrap5.min.js"></script>
+
     <script>
         const csrf = $('input[name="__RequestVerificationToken"]').val();
         const pollType = '@type';
-        const PAGE_SIZE = 12;
+        const isAuth = @(User.Identity?.IsAuthenticated == true ? "true" : "false");
         const detailsUrl = '@Url.Action("Details", "Polls")';
-        let loaded = 0;
+        const loginUrl = '@Url.Action("Login", "Account")';
+        const voteUrl = '@Url.Action("Vote", "Polls")';
+        const listUrl = '@Url.Action("List", "Polls")';
+        const MAX_SHOWN = 4;          // options shown on the card (the popup shows all of them)
+
+        const polls = {};             // poll id -> poll data, so a card can redraw itself
 
         const esc = s => String(s ?? '').replace(/[&<>"']/g,
             c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -44,67 +83,193 @@
             Closed: 'bg-secondary-subtle text-secondary'
         };
 
+        // ---------- Pieces of a card ----------
+        function optionsHtml(p) {
+            const shown = p.options.slice(0, MAX_SHOWN);
+            // If your own vote is hidden behind "+ more", swap it in so you always see it
+            if (p.myChoiceId != null && !shown.some(o => o.id === p.myChoiceId) && shown.length === MAX_SHOWN)
+                shown[MAX_SHOWN - 1] = p.options.find(o => o.id === p.myChoiceId);
+
+            const lines = shown.map(o => {
+                const mine = o.id === p.myChoiceId;
+                return `<div class="opt-line ${mine ? 'mine' : ''}">
+                    <div class="opt-top">
+                        <span class="opt-name">${esc(o.text)}${mine ? ' <span class="badge bg-primary-subtle text-primary rounded-pill ms-1">Your vote</span>' : ''}</span>
+                        <span class="text-muted">${Number(o.percent)}%</span>
+                    </div>
+                    <div class="progress"><div class="progress-bar" style="width:0" data-w="${Number(o.percent)}"></div></div>
+                </div>`;
+            }).join('');
+
+            const more = p.options.length > MAX_SHOWN
+                ? `<div class="poll-more">+ ${p.options.length - MAX_SHOWN} more options</div>` : '';
+            return lines + more;
+        }
+
+        function actionHtml(p) {
+            if (!p.options.length) return '<div class="poll-note">No options yet</div>';
+            if (p.myChoiceId != null) return '<div class="poll-note">&#10003; You voted</div>';
+            if (p.status === 'Closed') return '<div class="poll-note">This poll is closed</div>';
+            if (p.status === 'Upcoming') {
+                const when = new Date(p.startDate).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+                return `<div class="poll-note">Starts ${esc(when)}</div>`;
+            }
+            if (!isAuth) return `<a class="btn btn-primary rounded-pill px-4" href="${loginUrl}">Log in to vote</a>`;
+            return '<button type="button" class="btn btn-primary rounded-pill px-4 vote-open">Vote</button>';
+        }
+
         function cardHtml(p) {
+            const url = `${detailsUrl}/${Number(p.id)}`;
             const cover = p.imageUrl
                 ? `<img class="poll-cover" src="${esc(p.imageUrl)}" alt="" loading="lazy" />`
                 : `<div class="poll-cover poll-cover-ph">${esc((p.title || '?').charAt(0).toUpperCase())}</div>`;
-            const desc = p.description || '';
-            const short = desc.length > 110 ? desc.substring(0, 110) + '...' : desc;
             const ends = new Date(p.endDate).toLocaleDateString([], { dateStyle: 'medium' });
 
-            return `<div class="col-md-6 col-lg-4">
-                    <a class="poll-card" href="${detailsUrl}/${p.id}">
-                        ${cover}
-                        <div class="poll-body">
-                            <span class="badge ${badge[p.status] || badge.Closed} rounded-pill px-3 mb-2">${esc(p.status)}</span>
-                            <h5 class="fw-bold mb-1">${esc(p.title)}</h5>
-                            <p class="text-muted small mb-0">${esc(short)}</p>
-                        </div>
-                        <div class="poll-footer">
-                            <span>${p.choices} choices</span>
-                            <span>${p.votes} votes</span>
-                            <span>Ends ${esc(ends)}</span>
-                        </div>
-                    </a>
-                </div>`;
+            return `<div class="poll-card" data-id="${Number(p.id)}">
+                <div class="poll-head">
+                    <span class="badge ${badge[p.status] || badge.Closed} rounded-pill px-3">${esc(p.status)}</span>
+                    <h5 class="poll-title"><a href="${url}">${esc(p.title)}</a></h5>
+                </div>
+                <a href="${url}" class="d-block">${cover}</a>
+                <div class="poll-body">
+                    <div class="poll-options">${optionsHtml(p)}</div>
+                    <div class="poll-action">${actionHtml(p)}</div>
+                </div>
+                <div class="poll-footer">
+                    <span>${Number(p.choices)} choices</span>
+                    <span>${Number(p.votes)} votes</span>
+                    <span>Ends ${esc(ends)}</span>
+                </div>
+            </div>`.trim();
         }
 
-        async function load(reset) {
-            if (reset) { loaded = 0; $('#cards').empty(); }
+        // The bars start at 0 and grow to their value
+        function growBars(scope) {
+            requestAnimationFrame(() => requestAnimationFrame(() =>
+                scope.querySelectorAll('.progress-bar[data-w]').forEach(b => b.style.width = b.dataset.w + '%')));
+        }
 
-            const body = new URLSearchParams({
-                draw: 1,
-                start: loaded,
-                length: PAGE_SIZE,
-                search: $('#txtSearch').val(),
-                type: pollType
-            });
+        // ---------- The table ----------
+        const table = $('#pollsTable').DataTable({
+            serverSide: true,
+            processing: false,
+            pageLength: 9,
+            lengthChange: false,
+            autoWidth: false,
+            pagingType: 'simple',
+            ordering: false,
+            dom: 'rt<"d-flex justify-content-between align-items-center flex-wrap gap-2 mt-4"ip>',
+            language: {
+                emptyTable: 'No polls yet.',
+                zeroRecords: 'No polls found.',
+                info: 'Showing _START_ to _END_ of _TOTAL_',
+                infoEmpty: 'No polls',
+                paginate: { previous: 'Previous', next: 'Next' }
+            },
+            ajax: {
+                url: listUrl,
+                type: 'POST',
+                headers: { 'RequestVerificationToken': csrf },
+                data: function (d) {
+                    return {
+                        draw: d.draw,
+                        start: d.start,
+                        length: d.length,
+                        search: $('#txtSearch').val(),
+                        type: pollType
+                    };
+                },
+                dataSrc: function (json) {
+                    json.data.forEach(p => polls[p.id] = p);
+                    $('#totalChip').text(json.recordsTotal + ' polls');
+                    $('#msg').addClass('d-none');
+                    return json.data;
+                },
+                error: function (xhr) {
+                    $('#msg').removeClass('d-none').text('Could not load polls (error ' + xhr.status + ').');
+                }
+            },
+            columns: [{
+                title: '', data: 'id', orderable: false,
+                render: function (data, type, row) {
+                    return type === 'display' ? cardHtml(row) : data;
+                }
+            }],
+            drawCallback: function () {
+                growBars(document.getElementById('pollsTable'));
+            }
+        });
+
+        $('#btnSearch').on('click', () => table.ajax.reload());
+        $('#txtSearch').on('keydown', e => { if (e.key === 'Enter') table.ajax.reload(); });
+
+        // ---------- The vote popup ----------
+        const modalEl = document.getElementById('voteModal');
+        const modal = new bootstrap.Modal(modalEl);
+        let current = null;     // the poll being voted
+
+        // The cards are created by JavaScript, so the listener is on the table
+        $('#pollsTable').on('click', '.vote-open', function () {
+            current = polls[this.closest('.poll-card').dataset.id];
+
+            $('#vTitle').text(current.title);
+            $('#vNote').text('Choose one option. A vote cannot be changed.');
+            $('#vError').addClass('d-none');
+            $('#vConfirm').prop('disabled', true);
+            $('#vOptions').html(current.options.map((o, i) =>
+                `<label class="vote-choice" style="--i:${i}">
+                    <input type="radio" name="choice" value="${Number(o.id)}" />
+                    <span>${esc(o.text)}</span>
+                </label>`).join(''));
+
+            modal.show();
+        });
+
+        $('#vOptions').on('change', 'input', function () {
+            const option = current.options.find(o => o.id === Number(this.value));
+            // .text() on a new element: the option text is never read as HTML
+            $('#vNote').empty().append('Vote for ', $('<strong>').text(option.text), '? A vote cannot be changed.');
+            $('#vConfirm').prop('disabled', false);
+        });
+
+        $('#vConfirm').on('click', async function () {
+            const poll = current;
+            const chosen = document.querySelector('#vOptions input:checked');
+            if (!poll || !chosen) return;
+
+            const btn = this;
+            btn.disabled = true;
+            $('#vError').addClass('d-none');
 
             try {
-                const response = await fetch('@Url.Action("List", "Polls")', {
+                const response = await fetch(voteUrl, {
                     method: 'POST',
                     headers: { 'RequestVerificationToken': csrf, 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body
+                    body: new URLSearchParams({ pollId: poll.id, choiceId: chosen.value })
                 });
-                if (!response.ok) throw new Error(response.status);
-                const json = await response.json();
+                const result = await response.json();
 
-                json.data.forEach(p => $('#cards').append(cardHtml(p)));
-                loaded += json.data.length;
+                if (result.success) {
+                    poll.myChoiceId = result.myChoiceId;
+                    poll.options = result.options;
+                    poll.votes = result.votes;
+                    modal.hide();
 
-                $('#totalChip').text(json.recordsTotal + ' polls');
-                $('#empty').toggleClass('d-none', loaded > 0);
-                $('#loadMore').toggleClass('d-none', loaded >= json.recordsFiltered);
-                $('#msg').addClass('d-none');
-            } catch (e) {
-                $('#msg').removeClass('d-none').text('Could not load polls. Please try again.');
+                    // Redraw only this card, without reloading the table
+                    const card = document.querySelector(`.poll-card[data-id="${poll.id}"]`);
+                    if (card) {
+                        const fresh = $(cardHtml(poll))[0];
+                        card.replaceWith(fresh);
+                        growBars(fresh);
+                    }
+                } else {
+                    $('#vError').text(result.message).removeClass('d-none');
+                    btn.disabled = false;
+                }
+            } catch {
+                $('#vError').text('Something went wrong. Please try again.').removeClass('d-none');
+                btn.disabled = false;
             }
-        }
-
-        $('#btnSearch').on('click', () => load(true));
-        $('#txtSearch').on('keydown', e => { if (e.key === 'Enter') load(true); });
-        $('#loadMore').on('click', () => load(false));
-
-        load(true);
+        });
     </script>
 }
