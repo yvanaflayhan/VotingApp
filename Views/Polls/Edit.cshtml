@@ -1,0 +1,114 @@
+@using Voting_app.Models
+@model EditPollViewModel
+
+@{
+    ViewData["Title"] = "Edit poll";
+    var back = Model.Type == PollType.Awards ? "Awards" : "Community";
+}
+
+<div class="d-flex justify-content-center py-3">
+    <div class="card border-0 shadow-sm rounded-4 w-100 create-card">
+        <div class="card-body p-4 p-md-5">
+            <h2 class="fw-bold mb-1">Edit poll</h2>
+            <p class="text-muted mb-4">
+                <span class="badge bg-primary-subtle text-primary rounded-pill px-3">@Model.Type</span>
+                @Model.ChoiceCount choices · @Model.VoteCount votes
+            </p>
+
+            <form asp-action="Edit" method="post" enctype="multipart/form-data">
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                <input type="hidden" asp-for="Id" />
+                <input type="hidden" asp-for="TimezoneOffset" id="TimezoneOffset" />
+
+                <div class="mb-3">
+                    <label asp-for="Title" class="form-label fw-semibold"></label>
+                    <input asp-for="Title" class="form-control" maxlength="150" />
+                    <span asp-validation-for="Title" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-4">
+                    <label asp-for="Description" class="form-label fw-semibold"></label>
+                    <textarea asp-for="Description" class="form-control" rows="3" maxlength="1000"></textarea>
+                    <span asp-validation-for="Description" class="text-danger small"></span>
+                </div>
+
+                <!-- Photo -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">
+                        Photo <span class="text-muted fw-normal">(JPG / PNG / WEBP, max 2 MB)</span>
+                    </label>
+
+                    @if (!string.IsNullOrEmpty(Model.CurrentImagePath))
+                    {
+                        <img src="@Model.CurrentImagePath" class="image-preview mb-2" alt="Current photo" />
+                        <div class="form-check mb-2">
+                            <input asp-for="RemoveImage" class="form-check-input" />
+                            <label asp-for="RemoveImage" class="form-check-label">Remove the current photo</label>
+                        </div>
+                    }
+
+                    <input type="file" name="Image" id="Image" class="form-control"
+                           accept="image/png,image/jpeg,image/webp" />
+                    <div class="form-text">Choosing a new photo replaces the current one.</div>
+                    <span asp-validation-for="Image" class="text-danger small d-block"></span>
+                </div>
+
+                <!-- Dates -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label asp-for="StartDate" class="form-label fw-semibold"></label>
+                        <input asp-for="StartDate" type="datetime-local" id="StartDate"
+                               asp-format="{0:yyyy-MM-ddTHH:mm}" class="form-control" data-utc="@Model.StartUtc"
+                               disabled="@Model.Started" />
+                        @if (Model.Started)
+                        {
+                            <div class="form-text">The poll has started, so the start date is locked.</div>
+                        }
+                        <span asp-validation-for="StartDate" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="EndDate" class="form-label fw-semibold"></label>
+                        <input asp-for="EndDate" type="datetime-local" id="EndDate" asp-format="{0:yyyy-MM-ddTHH:mm}"
+                               class="form-control" data-utc="@Model.EndUtc" />
+                        <span asp-validation-for="EndDate" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                <div class="alert alert-light border rounded-4 small">
+                    The type and the choices cannot be changed here.
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Save changes</button>
+                    <a class="btn btn-outline-secondary rounded-pill px-4" asp-action="@back">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        // The server stores UTC. The inputs must show the admin's local time.
+        const pad = n => String(n).padStart(2, '0');
+        const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+        ['StartDate', 'EndDate'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el.value) el.value = fmt(new Date(el.dataset.utc));    // keeps what was typed after an error
+        });
+
+        document.getElementById('TimezoneOffset').value = new Date().getTimezoneOffset();
+
+        // Size check before uploading (the server checks again)
+        document.getElementById('Image').addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (file && file.size > 2 * 1024 * 1024) {
+                alert('The photo must be 2 MB or smaller.');
+                e.target.value = '';
+            }
+        });
+    </script>
+}

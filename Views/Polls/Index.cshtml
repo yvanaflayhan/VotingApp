@@ -99,12 +99,12 @@
                             ? `<img class="poll-thumb" src="${esc(row.imageUrl)}" alt="" />`
                             : `<span class="poll-thumb poll-thumb-ph">${esc((data || '?').charAt(0).toUpperCase())}</span>`;
                         return `<div class="d-flex align-items-center gap-3">
-                                    ${thumb}
-                                    <div>
-                                        <div class="fw-semibold">${esc(data)}</div>
-                                        <div class="text-muted small">${esc(short)}</div>
-                                    </div>
-                                </div>`;
+                                                                ${thumb}
+                                                                <div>
+                                                                    <div class="fw-semibold">${esc(data)}</div>
+                                                                    <div class="text-muted small">${esc(short)}</div>
+                                                                </div>
+                                                            </div>`;
                     }
                 },
                 { title: 'Choices', data: 'choices', width: '9%', className: 'text-center' },
@@ -129,11 +129,16 @@
                     }
                 },
                 {
-                    title: '', data: 'id', width: '14%', className: 'text-end', orderable: false,
-                    render: function (data, type) {
+                    title: '', data: 'id', width: '20%', className: 'text-end', orderable: false,
+                    render: function (data, type, row) {
                         if (type !== 'display') return data;
-                        return `<a class="btn btn-outline-primary btn-sm rounded-pill px-3"
-                                   href="@Url.Action("Details", "Polls")/${data}">Details</a>`;
+                        const id = Number(data);
+                        const edit = row.isMine
+                            ? `<a class="btn btn-outline-secondary btn-sm rounded-pill px-3 me-1"
+                          href="@Url.Action("Edit", "Polls")/${id}">Edit</a>`
+                            : '';
+                        return `${edit}<a class="btn btn-outline-primary btn-sm rounded-pill px-3"
+                          href="@Url.Action("Details", "Polls")/${id}">Details</a>`;
                     }
                 }
             ]
