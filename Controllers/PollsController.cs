@@ -269,79 +269,113 @@ return Json(new { success = true, message = "Your vote was saved.", myChoiceId =
         }
 
         [Authorize(Roles = "Admin")]
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [RequestSizeLimit(3_000_000)]
-        public async Task<IActionResult> Create(CreatePollViewModel model)
+[HttpPost]
+[ValidateAntiForgeryToken]
+[RequestSizeLimit(25_000_000)]      // up to 10 choice photos + the poll photo
+public async Task<IActionResult> Create(CreatePollViewModel model)
+{
+    var isAwards = model.Type == PollType.Awards;
+
+    // Clean the rows: trim, drop empty ones, drop duplicates (ignoring case)
+    var rows = model.Choices
+        .Select(c => new { Text = (c.Text ?? "").Trim(), c.Image })
+        .Where(c => c.Text.Length > 0)
+        .GroupBy(c => c.Text, StringComparer.OrdinalIgnoreCase)
+        .Select(g => g.First())
+        .ToList();
+
+    if (rows.Count < 2)
+        ModelState.AddModelError(nameof(model.Choices), "Enter at least 2 different choices.");
+    else if (rows.Count > 10)
+        ModelState.AddModelError(nameof(model.Choices), "A poll can have at most 10 choices.");
+    else if (rows.Any(r => r.Text.Length > 200))
+        ModelState.AddModelError(nameof(model.Choices), "Each choice can have at most 200 characters.");
+
+    // Choice photos exist only in Awards polls (the server decides, not the page)
+    if (isAwards)
+    {
+        foreach (var row in rows)
         {
-            // Choices: trim, remove empty ones, remove duplicates (ignoring case)
-            var choices = model.Choices
-                .Select(c => (c ?? "").Trim())
-                .Where(c => c.Length > 0)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            if (row.Image == null || row.Image.Length == 0) continue;
 
-            if (choices.Count < 2)
-                ModelState.AddModelError(nameof(model.Choices), "Enter at least 2 different choices.");
-            else if (choices.Count > 10)
-                ModelState.AddModelError(nameof(model.Choices), "A poll can have at most 10 choices.");
-            else if (choices.Any(c => c.Length > 200))
-                ModelState.AddModelError(nameof(model.Choices), "Each choice can have at most 200 characters.");
-
-            // Dates: the browser sends local time, the database stores UTC
-            var offset = Math.Clamp(model.TimezoneOffset, -840, 840);
-            DateTime? startUtc = model.StartDate.HasValue ? ToUtc(model.StartDate.Value, offset) : null;
-            DateTime? endUtc = model.EndDate.HasValue ? ToUtc(model.EndDate.Value, offset) : null;
-
-            if (endUtc.HasValue && endUtc <= DateTime.UtcNow.AddMinutes(1))
-                ModelState.AddModelError(nameof(model.EndDate), "The end date must be in the future.");
-            else if (startUtc.HasValue && endUtc.HasValue && endUtc <= startUtc)
-                ModelState.AddModelError(nameof(model.EndDate), "The end date must be after the start date.");
-
-            // The photo is optional, but if there is one it must be a real, small image
-            if (model.Image != null && model.Image.Length > 0)
-            {
-                if (model.Image.Length > MaxImageBytes)
-                    ModelState.AddModelError(nameof(model.Image), "The photo must be 2 MB or smaller.");
-                else if (!await IsValidImageAsync(model.Image))
-                    ModelState.AddModelError(nameof(model.Image), "Please upload a JPG, PNG or WEBP image.");
-            }
-
-            if (!ModelState.IsValid)
-                return View(model);
-
-            string? imagePath = null;
-            if (model.Image != null && model.Image.Length > 0)
-                imagePath = await SaveImageAsync(model.Image);
-
-            var poll = new Poll
-            {
-                Title = model.Title.Trim(),
-                Description = model.Description?.Trim() ?? "",
-                Type = model.Type!.Value,
-                StartDate = startUtc!.Value,
-                EndDate = endUtc!.Value,
-                ImagePath = imagePath,
-                CreatorId = User.FindFirstValue(ClaimTypes.NameIdentifier)!,
-                Choices = choices.Select(c => new Choice { Text = c }).ToList()
-            };
-
-            try
-            {
-                _db.Polls.Add(poll);
-                await _db.SaveChangesAsync();     // saves the poll AND its choices together
-            }
-            catch
-            {
-                DeleteImage(imagePath);           // do not leave an orphan file if the save failed
-                throw;
-            }
-
-            TempData["Success"] = $"Poll \"{poll.Title}\" was created.";
-            return poll.Type == PollType.Awards
-                ? RedirectToAction(nameof(Awards))
-                : RedirectToAction(nameof(Community));
+            if (row.Image.Length > MaxImageBytes)
+                ModelState.AddModelError(nameof(model.Choices), $"Choice \"{row.Text}\": the photo must be 2 MB or smaller.");
+            else if (!await IsValidImageAsync(row.Image))
+                ModelState.AddModelError(nameof(model.Choices), $"Choice \"{row.Text}\": please upload a JPG, PNG or WEBP image.");
         }
+    }
+
+    // Dates: the browser sends local time, the database stores UTC
+    var offset = Math.Clamp(model.TimezoneOffset, -840, 840);
+    DateTime? startUtc = model.StartDate.HasValue ? ToUtc(model.StartDate.Value, offset) : null;
+    DateTime? endUtc = model.EndDate.HasValue ? ToUtc(model.EndDate.Value, offset) : null;
+
+    if (endUtc.HasValue && endUtc <= DateTime.UtcNow.AddMinutes(1))
+        ModelState.AddModelError(nameof(model.EndDate), "The end date must be in the future.");
+    else if (startUtc.HasValue && endUtc.HasValue && endUtc <= startUtc)
+        ModelState.AddModelError(nameof(model.EndDate), "The end date must be after the start date.");
+
+    // The poll photo is optional, but if there is one it must be a real, small image
+    if (model.Image != null && model.Image.Length > 0)
+    {
+        if (model.Image.Length > MaxImageBytes)
+            ModelState.AddModelError(nameof(model.Image), "The photo must be 2 MB or smaller.");
+        else if (!await IsValidImageAsync(model.Image))
+            ModelState.AddModelError(nameof(model.Image), "Please upload a JPG, PNG or WEBP image.");
+    }
+
+    if (!ModelState.IsValid)
+        return View(model);
+
+    var savedFiles = new List<string>();
+    try
+    {
+        string? imagePath = null;
+        if (model.Image != null && model.Image.Length > 0)
+        {
+            imagePath = await SaveImageAsync(model.Image, "polls");
+            savedFiles.Add(imagePath);
+        }
+
+        var choices = new List<Choice>();
+        foreach (var row in rows)
+        {
+            string? choicePath = null;
+            if (isAwards && row.Image != null && row.Image.Length > 0)
+            {
+                choicePath = await SaveImageAsync(row.Image, "choices");
+                savedFiles.Add(choicePath);
+            }
+            choices.Add(new Choice { Text = row.Text, ImagePath = choicePath });
+        }
+
+        var poll = new Poll
+        {
+            Title = model.Title.Trim(),
+            Description = model.Description?.Trim() ?? "",
+            Type = model.Type!.Value,
+            StartDate = startUtc!.Value,
+            EndDate = endUtc!.Value,
+            ImagePath = imagePath,
+            CreatorId = User.FindFirstValue(ClaimTypes.NameIdentifier)!,
+            Choices = choices
+        };
+
+        _db.Polls.Add(poll);
+        await _db.SaveChangesAsync();     // saves the poll AND its choices together
+
+        TempData["Success"] = $"Poll \"{poll.Title}\" was created.";
+        return poll.Type == PollType.Awards
+            ? RedirectToAction(nameof(Awards))
+            : RedirectToAction(nameof(Community));
+    }
+    catch
+    {
+        foreach (var path in savedFiles)      // do not leave orphan files if something failed
+            DeleteImage(path);
+        throw;
+    }
+}
 
         // =====================================================
         // Helpers
@@ -368,18 +402,18 @@ return Json(new { success = true, message = "Your vote was saved.", myChoiceId =
             return jpeg || png || webp;
         }
 
-        private async Task<string> SaveImageAsync(IFormFile file)
-        {
-            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-            var fileName = $"{Guid.NewGuid():N}{ext}";          // never trust the original name
-            var folder = Path.Combine(_env.WebRootPath, "uploads", "polls");
-            Directory.CreateDirectory(folder);
+        private async Task<string> SaveImageAsync(IFormFile file, string folderName)
+{
+    var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+    var fileName = $"{Guid.NewGuid():N}{ext}";          // never trust the original name
+    var folder = Path.Combine(_env.WebRootPath, "uploads", folderName);
+    Directory.CreateDirectory(folder);
 
-            await using var stream = new FileStream(Path.Combine(folder, fileName), FileMode.Create);
-            await file.CopyToAsync(stream);
+    await using var stream = new FileStream(Path.Combine(folder, fileName), FileMode.Create);
+    await file.CopyToAsync(stream);
 
-            return $"/uploads/polls/{fileName}";
-        }
+    return $"/uploads/{folderName}/{fileName}";
+}
 
         private void DeleteImage(string? path)
         {

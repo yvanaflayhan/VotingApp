@@ -12,5 +12,7 @@ namespace Voting_app.Models
 
         public int PollId {get; set;}
         public Poll? Poll {get; set;}
+        [StringLength(300)]
+        public string? ImagePath { get; set; }
     }
 }

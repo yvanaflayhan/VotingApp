@@ -28,6 +28,11 @@ namespace Voting_app.Models
         public int TimezoneOffset { get; set; }
 
         // Bound from several inputs that all have name="Choices"
-        public List<string> Choices { get; set; } = new();
+        public List<ChoiceInput> Choices { get; set; } = new();
     }
+    public class ChoiceInput
+{
+    public string? Text { get; set; }
+    public IFormFile? Image { get; set; }
+}
 }
