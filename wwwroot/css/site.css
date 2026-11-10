@@ -822,9 +822,11 @@ body.auth-page {
 .awards-hint {
   display: none;
 }
+
 .awards-mode .choice-photo {
   display: inline-flex;
 }
+
 .choice-photo {
   width: 42px;
   height: 42px;
@@ -838,14 +840,156 @@ body.auth-page {
   cursor: pointer;
   transition: border-color .15s ease, background-color .15s ease;
 }
+
 .choice-photo:hover {
   border-color: #4f46e5;
   background-color: #eef2ff;
 }
+
 .choice-photo.has-photo {
   border-style: solid;
   border-color: #4f46e5;
 }
+
 .choice-photo.has-photo svg {
   display: none;
+}
+
+/* ===== User poll cards as rows: photo flush left ===== */
+.cards-wrap .cards-table tbody {
+  grid-template-columns: 1fr;
+  /* one poll per row */
+  gap: 1.25rem;
+}
+
+.cards-wrap .cards-table .poll-card.row-card {
+  flex-direction: row;
+  height: auto;
+  min-height: 210px;
+  transform: none;
+}
+
+/* The photo fills the left side to the edges: no padding */
+.row-card .poll-photo {
+  flex: 0 0 260px;
+  position: relative;
+  display: block;
+  background: linear-gradient(135deg, #c7d2fe, #fbcfe8);
+  text-decoration: none;
+}
+
+.row-card .poll-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.row-card .poll-photo.ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.row-card .poll-photo.ph span {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #4f46e5;
+}
+
+/* The content on the right */
+.row-card .poll-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 1.25rem 1.5rem;
+}
+
+.row-card .poll-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0;
+  margin-bottom: .9rem;
+}
+
+.row-card .poll-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* More than 3 options: the list is cut and fades out */
+.row-card .poll-options {
+  flex: 1;
+}
+
+.row-card .poll-options.fade-out {
+  max-height: 160px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 70%, transparent 100%);
+}
+
+/* Bottom line: numbers on the left, Vote button on the right */
+.row-card .poll-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-top: 1rem;
+  padding-top: .9rem;
+  border-top: 1px solid #f1f3f7;
+}
+
+.row-card .poll-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .3rem 1rem;
+  color: #6b7280;
+  font-size: .82rem;
+}
+
+.row-card .poll-action {
+  margin: 0;
+  padding: 0;
+  text-align: right;
+}
+
+.row-card .poll-action .btn {
+  min-width: 130px;
+}
+
+/* Phones: photo on top, full-width button */
+@media (max-width: 767.98px) {
+  .cards-wrap .cards-table .poll-card.row-card {
+    flex-direction: column;
+  }
+
+  .row-card .poll-photo {
+    flex: 0 0 auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  .row-card .poll-bottom {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .row-card .poll-meta {
+    justify-content: center;
+  }
+
+  .row-card .poll-action {
+    text-align: center;
+  }
+
+  .row-card .poll-action .btn {
+    width: 100%;
+  }
 }
