@@ -70,7 +70,6 @@
         const loginUrl = '@Url.Action("Login", "Account")';
         const voteUrl = '@Url.Action("Vote", "Polls")';
         const listUrl = '@Url.Action("List", "Polls")';
-        const MAX_SHOWN = 4;          // options shown on the card (the popup shows all of them)
 
         const polls = {};             // poll id -> poll data, so a card can redraw itself
 
@@ -85,25 +84,28 @@
 
         // ---------- Pieces of a card ----------
         function optionsHtml(p) {
-            const shown = p.options.slice(0, MAX_SHOWN);
-            // If your own vote is hidden behind "+ more", swap it in so you always see it
-            if (p.myChoiceId != null && !shown.some(o => o.id === p.myChoiceId) && shown.length === MAX_SHOWN)
-                shown[MAX_SHOWN - 1] = p.options.find(o => o.id === p.myChoiceId);
+            // Your own vote goes first, so the fade can never hide it
+            let list = p.options;
+            if (p.myChoiceId != null) {
+                const mine = list.find(o => o.id === p.myChoiceId);
+                if (mine) list = [mine, ...list.filter(o => o !== mine)];
+            }
 
-            const lines = shown.map(o => {
-                const mine = o.id === p.myChoiceId;
-                return `<div class="opt-line ${mine ? 'mine' : ''}">
-                    <div class="opt-top">
-                        <span class="opt-name">${esc(o.text)}${mine ? ' <span class="badge bg-primary-subtle text-primary rounded-pill ms-1">Your vote</span>' : ''}</span>
-                        <span class="text-muted">${Number(o.percent)}%</span>
-                    </div>
-                    <div class="progress"><div class="progress-bar" style="width:0" data-w="${Number(o.percent)}"></div></div>
-                </div>`;
+            const lines = list.slice(0, 6).map(o => {
+                const isMine = o.id === p.myChoiceId;
+                const thumb = o.imageUrl
+                    ? `<img class="opt-thumb" src="${esc(o.imageUrl)}" alt="" loading="lazy" />` : '';
+                return `<div class="opt-line ${isMine ? 'mine' : ''}">
+                                <div class="opt-top">
+                                    <span class="opt-name">${thumb}<span class="opt-text">${esc(o.text)}</span>${isMine ? ' <span class="badge bg-primary-subtle text-primary rounded-pill ms-1">Your vote</span>' : ''}</span>
+                                    <span class="text-muted">${Number(o.percent)}%</span>
+                                </div>
+                                <div class="progress"><div class="progress-bar" style="width:0" data-w="${Number(o.percent)}"></div></div>
+                            </div>`;
             }).join('');
 
-            const more = p.options.length > MAX_SHOWN
-                ? `<div class="poll-more">+ ${p.options.length - MAX_SHOWN} more options</div>` : '';
-            return lines + more;
+            // More than 3 options: the list is cut and fades out, so the card stays short
+            return `<div class="poll-options ${list.length > 3 ? 'fade-out' : ''}">${lines}</div>`;
         }
 
         function actionHtml(p) {
@@ -120,25 +122,27 @@
 
         function cardHtml(p) {
             const url = `${detailsUrl}/${Number(p.id)}`;
-            const cover = p.imageUrl
-                ? `<img class="poll-cover" src="${esc(p.imageUrl)}" alt="" loading="lazy" />`
-                : `<div class="poll-cover poll-cover-ph">${esc((p.title || '?').charAt(0).toUpperCase())}</div>`;
+            const photo = p.imageUrl
+                ? `<img src="${esc(p.imageUrl)}" alt="" loading="lazy" />`
+                : `<span>${esc((p.title || '?').charAt(0).toUpperCase())}</span>`;
             const ends = new Date(p.endDate).toLocaleDateString([], { dateStyle: 'medium' });
 
-            return `<div class="poll-card" data-id="${Number(p.id)}">
-                <div class="poll-head">
-                    <span class="badge ${badge[p.status] || badge.Closed} rounded-pill px-3">${esc(p.status)}</span>
-                    <h5 class="poll-title"><a href="${url}">${esc(p.title)}</a></h5>
-                </div>
-                <a href="${url}" class="d-block">${cover}</a>
-                <div class="poll-body">
-                    <div class="poll-options">${optionsHtml(p)}</div>
-                    <div class="poll-action">${actionHtml(p)}</div>
-                </div>
-                <div class="poll-footer">
-                    <span>${Number(p.choices)} choices</span>
-                    <span>${Number(p.votes)} votes</span>
-                    <span>Ends ${esc(ends)}</span>
+            return `<div class="poll-card row-card" data-id="${Number(p.id)}">
+                <a class="poll-photo ${p.imageUrl ? '' : 'ph'}" href="${url}">${photo}</a>
+                <div class="poll-content">
+                    <div class="poll-head">
+                        <h5 class="poll-title"><a href="${url}">${esc(p.title)}</a></h5>
+                        <span class="badge ${badge[p.status] || badge.Closed} rounded-pill px-3">${esc(p.status)}</span>
+                    </div>
+                    ${optionsHtml(p)}
+                    <div class="poll-bottom">
+                        <div class="poll-meta">
+                            <span>${Number(p.choices)} choices</span>
+                            <span>${Number(p.votes)} votes</span>
+                            <span>Ends ${esc(ends)}</span>
+                        </div>
+                        <div class="poll-action">${actionHtml(p)}</div>
+                    </div>
                 </div>
             </div>`.trim();
         }
@@ -153,7 +157,7 @@
         const table = $('#pollsTable').DataTable({
             serverSide: true,
             processing: false,
-            pageLength: 9,
+            pageLength: 4,
             lengthChange: false,
             autoWidth: false,
             pagingType: 'simple',
@@ -218,9 +222,9 @@
             $('#vConfirm').prop('disabled', true);
             $('#vOptions').html(current.options.map((o, i) =>
                 `<label class="vote-choice" style="--i:${i}">
-                    <input type="radio" name="choice" value="${Number(o.id)}" />
-                    <span>${esc(o.text)}</span>
-                </label>`).join(''));
+                                        <input type="radio" name="choice" value="${Number(o.id)}" />
+                                        <span>${esc(o.text)}</span>
+                                    </label>`).join(''));
 
             modal.show();
         });
