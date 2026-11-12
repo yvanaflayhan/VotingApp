@@ -24,6 +24,8 @@ builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Account/Login";
     options.AccessDeniedPath = "/Account/AccessDenied";
+    options.ExpireTimeSpan = TimeSpan.FromDays(7); // the default is 14 days
+    options.SlidingExpiration = true; // renewed while the person keeps using the app
 });
 
 // A role change must apply on the next request, not after 30 minutes
