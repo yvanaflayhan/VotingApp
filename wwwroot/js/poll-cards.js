@@ -67,7 +67,7 @@
             ? `<img src="${esc(poll.imageUrl)}" alt="" loading="lazy" />`
             : `<span>${esc(firstLetter(poll.title))}</span>`;
 
-        return `<div class="poll-card row-card" data-id="${Number(poll.id)}">
+        return `<div class="poll-card" data-id="${Number(poll.id)}">
             <a class="poll-photo ${poll.imageUrl ? '' : 'ph'}" href="${url}">${photo}</a>
             <div class="poll-content">
                 <div class="poll-head">
