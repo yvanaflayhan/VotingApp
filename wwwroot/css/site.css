@@ -73,7 +73,7 @@ body {
 }
 
 /* The placeholder only exists to make floating labels work, so it stays invisible */
-.form-floating > .form-control::placeholder {
+.form-floating>.form-control::placeholder {
   color: transparent;
 }
 
@@ -202,6 +202,52 @@ body {
   color: var(--danger);
 }
 
+/* Small round icon buttons (Edit, Delete) */
+.icon-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: .15rem;
+}
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  text-decoration: none;
+  transition: background .15s ease, color .15s ease;
+}
+
+.icon-btn:hover {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.icon-btn.danger:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.icon-btn:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* A title that opens its page */
+.row-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.row-link:hover {
+  color: var(--brand);
+}
+
 
 /* ---------- 5. Navbar and footer ---------- */
 .site-nav {
@@ -309,21 +355,24 @@ body.auth-page {
 .users-card {
   background: #fff;
   border-radius: 1.25rem;
-  overflow: hidden;                 /* clips the table corners, so they look rounded */
+  overflow: hidden;
+  /* clips the table corners, so they look rounded */
   box-shadow: var(--shadow-card);
 }
 
 .users-card table.users-table.dataTable {
-  margin: 0 !important;             /* DataTables adds 6px margins: they showed as white bands */
+  margin: 0 !important;
+  /* DataTables adds 6px margins: they showed as white bands */
   border-collapse: collapse !important;
   --bs-table-bg: transparent;
 }
 
-.users-card table.users-table.dataTable > thead {
-  --bs-table-bg: var(--panel);      /* Bootstrap paints cells from this variable */
+.users-card table.users-table.dataTable>thead {
+  --bs-table-bg: var(--panel);
+  /* Bootstrap paints cells from this variable */
 }
 
-.users-card table.users-table.dataTable > thead > tr > th {
+.users-card table.users-table.dataTable>thead>tr>th {
   padding: 1rem 1.25rem;
   font-size: .75rem;
   text-transform: uppercase;
@@ -332,12 +381,12 @@ body.auth-page {
   border-bottom: 1px solid var(--line);
 }
 
-.users-card table.users-table.dataTable > tbody > tr > td {
+.users-card table.users-table.dataTable>tbody>tr>td {
   padding: .95rem 1.25rem;
   border-bottom: 1px solid var(--line-soft);
 }
 
-.users-card table.users-table.dataTable > tbody > tr:last-child > td {
+.users-card table.users-table.dataTable>tbody>tr:last-child>td {
   border-bottom: 0;
 }
 
@@ -731,19 +780,19 @@ body.auth-page {
   border-color: var(--brand-light);
 }
 
-.vote-choice input:checked + span {
+.vote-choice input:checked+span {
   border-color: var(--brand);
   background: var(--brand-soft);
   color: var(--brand-dark);
 }
 
-.vote-choice input:checked + span::before {
+.vote-choice input:checked+span::before {
   border-color: var(--brand);
   background: var(--brand);
   box-shadow: inset 0 0 0 3px var(--brand-soft);
 }
 
-.vote-choice input:focus-visible + span {
+.vote-choice input:focus-visible+span {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
@@ -882,13 +931,13 @@ body.auth-page {
   border-color: var(--brand-light);
 }
 
-.btn-check:checked + .type-card {
+.btn-check:checked+.type-card {
   border-color: var(--brand);
   background: var(--brand-soft);
   box-shadow: 0 4px 14px rgba(79, 70, 229, .15);
 }
 
-.btn-check:focus-visible + .type-card {
+.btn-check:focus-visible+.type-card {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
@@ -1003,6 +1052,7 @@ body.auth-page {
 
 /* ---------- 12. Reduced motion: for people who turn animations off ---------- */
 @media (prefers-reduced-motion: reduce) {
+
   .vote-choice,
   .opt-line .progress-bar,
   .poll-card {

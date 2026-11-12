@@ -1,6 +1,6 @@
 // The polls page for users and guests: one card per row, loaded with DataTables (server-side).
 (() => {
-    const { esc, post, statusBadge, formatDate, formatDateTime, firstLetter, display } = App;
+    const { esc, post, statusBadge, formatDate, formatDateTime, firstLetter, display, pollActions } = App;
     const cfg = window.PollsPage;
 
     const PAGE_SIZE = 4;
@@ -53,13 +53,6 @@
         return '<button type="button" class="btn btn-primary rounded-pill px-4 vote-open">Vote</button>';
     }
 
-    // Edit and Delete appear only on the polls you created
-    function ownerButtons(poll) {
-        if (!poll.isMine) return '';
-        return `<a class="btn btn-outline-secondary btn-sm rounded-pill px-3" href="${cfg.urls.edit}/${Number(poll.id)}">Edit</a>
-            <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3 poll-delete"
-                    data-id="${Number(poll.id)}" data-title="${esc(poll.title)}" data-votes="${Number(poll.votes)}">Delete</button>`;
-    }
 
     function cardHtml(poll) {
         const url = `${cfg.urls.details}/${Number(poll.id)}`;
@@ -73,8 +66,8 @@
                 <div class="poll-head">
                     <h5 class="poll-title"><a href="${url}">${esc(poll.title)}</a></h5>
                     <div class="d-flex align-items-center gap-2 flex-shrink-0">
-                        ${ownerButtons(poll)}
                         ${statusBadge(poll.status)}
+                        ${pollActions(poll, cfg.urls.edit, { canEdit: poll.isMine, canDelete: poll.isMine })}
                     </div>
                 </div>
                 ${optionsHtml(poll)}

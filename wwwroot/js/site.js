@@ -165,10 +165,31 @@ const App = (() => {
         });
     }
 
+    // ---------- Icons and action buttons ----------
+
+    const ICONS = {
+        edit: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>',
+        trash: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>'
+    };
+
+    // Edit and Delete as small round icon buttons. Nothing is drawn when the visitor can do neither.
+    function pollActions(poll, editUrl, { canEdit, canDelete }) {
+        if (!canEdit && !canDelete) return '';
+
+        const id = Number(poll.id);
+        const edit = canEdit
+            ? `<a class="icon-btn" href="${editUrl}/${id}" title="Edit" aria-label="Edit">${ICONS.edit}</a>` : '';
+        const remove = canDelete
+            ? `<button type="button" class="icon-btn danger poll-delete" title="Delete" aria-label="Delete"
+                       data-id="${id}" data-title="${esc(poll.title)}" data-votes="${Number(poll.votes)}">${ICONS.trash}</button>` : '';
+
+        return `<div class="icon-actions">${edit}${remove}</div>`;
+    }
+
     return {
         esc, token, post, showMessage,
         firstLetter, formatDate, formatDateTime, toLocalInput,
         statusBadge, checkImageSize,
-        display, createTable, initPollDelete
+        display, createTable, initPollDelete, pollActions
     };
 })();
