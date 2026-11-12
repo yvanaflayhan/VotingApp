@@ -8,7 +8,10 @@ public class HomeController : Controller
 {
     #region Public actions
 
-    public IActionResult Index() => View();
+    public IActionResult Index() =>
+        User.Identity?.IsAuthenticated == true
+            ? RedirectToAction("Community", "Polls")
+            : RedirectToAction("Login", "Account");
 
     public IActionResult Privacy() => View();
 
