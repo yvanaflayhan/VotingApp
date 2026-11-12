@@ -1,40 +1,46 @@
-@using Voting_app.Models
 @model CreatePollViewModel
 
 @{
     ViewData["Title"] = "New poll";
     var rows = Model.Choices.Count >= 2 ? Model.Choices : new List<ChoiceInput> { new(), new() };
-    var awards = Model.Type == PollType.Awards;
+    var isAwards = Model.Type == PollType.Awards;
+    var isAdmin = User.IsAdmin();
+    var cancelAction = isAdmin ? (isAwards ? "Awards" : "Community") : "Mine";
 }
 
 <div class="d-flex justify-content-center py-3">
     <div class="card border-0 shadow-sm rounded-4 w-100 create-card">
         <div class="card-body p-4 p-md-5">
             <h2 class="fw-bold mb-1">Create a poll</h2>
-            <p class="text-muted mb-4">Choose a type, set the dates and add the choices.</p>
+            <p class="text-muted mb-4">
+                @(isAdmin ? "Choose a type, set the dates and add the choices." : "Set the dates and add the choices.")
+            </p>
 
             <form asp-action="Create" method="post" enctype="multipart/form-data">
                 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
                 <input type="hidden" asp-for="TimezoneOffset" id="TimezoneOffset" />
 
-                <!-- Type -->
-                <label class="form-label fw-semibold">Type</label>
-                <div class="row g-3 mb-4">
-                    <div class="col-6">
-                        <input type="radio" class="btn-check" name="Type" id="typeCommunity" value="Community"
-                               checked="@(Model.Type != PollType.Awards)" />
-                        <label class="type-card" for="typeCommunity">
-                            <strong>Community</strong>
-                            <span>Questions and opinions from everyone</span>
-                        </label>
-                    </div>
-                    <div class="col-6">
-                        <input type="radio" class="btn-check" name="Type" id="typeAwards" value="Awards"
-                               checked="@(Model.Type == PollType.Awards)" />
-                        <label class="type-card" for="typeAwards">
-                            <strong>Awards</strong>
-                            <span>Vote for the best, with a photo per choice</span>
-                        </label>
+                <!-- Type: only the admin sees the choice. The radios stay in the page for everybody,
+                     because the script needs them, and the server forces Community for users. -->
+                <div class="@(isAdmin ? "" : "d-none")">
+                    <label class="form-label fw-semibold">Type</label>
+                    <div class="row g-3 mb-4">
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="Type" id="typeCommunity" value="Community"
+                                   checked="@(!isAwards)" />
+                            <label class="type-card" for="typeCommunity">
+                                <strong>Community</strong>
+                                <span>Questions and opinions from everyone</span>
+                            </label>
+                        </div>
+                        <div class="col-6">
+                            <input type="radio" class="btn-check" name="Type" id="typeAwards" value="Awards"
+                                   checked="@isAwards" />
+                            <label class="type-card" for="typeAwards">
+                                <strong>Awards</strong>
+                                <span>Vote for the best, with a photo per choice</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
@@ -63,7 +69,7 @@
                     <img id="imagePreview" class="image-preview d-none" alt="Preview" />
                 </div>
 
-                <!-- Dates -->
+                <!-- Dates (poll-form.js fills the defaults, in the visitor's local time) -->
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
                         <label asp-for="StartDate" class="form-label fw-semibold"></label>
@@ -79,7 +85,7 @@
                     </div>
                 </div>
 
-                <!-- Choices -->
+                <!-- Choices (create-poll.js adds, removes and numbers the rows) -->
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <label class="form-label fw-semibold mb-0">Choices</label>
                     <span class="text-muted small" id="choiceCount"></span>
@@ -88,24 +94,10 @@
                     Awards: click the round camera next to a choice to add its photo (JPG / PNG / WEBP, max 2 MB).
                 </p>
 
-                <div id="choiceList" class="@(awards ? "awards-mode" : "")">
-                    @for (var i = 0; i < rows.Count; i++)
+                <div id="choiceList" class="@(isAwards ? "awards-mode" : "")">
+                    @foreach (var row in rows)
                     {
-                        <div class="choice-row">
-                            <span class="choice-num">@(i + 1)</span>
-                            <input name="Choices[@i].Text" class="form-control choice-text" maxlength="200"
-                                   value="@rows[i].Text" placeholder="Choice" />
-                            <label class="choice-photo" title="Add a photo">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                                    <circle cx="12" cy="13" r="4" />
-                                </svg>
-                                <input type="file" name="Choices[@i].Image" class="d-none choice-file"
-                                       accept="image/png,image/jpeg,image/webp" />
-                            </label>
-                            <button type="button" class="btn-remove" aria-label="Remove choice">&times;</button>
-                        </div>
+                        <partial name="_ChoiceRow" model="row" />
                     }
                 </div>
                 <span asp-validation-for="Choices" class="text-danger small d-block"></span>
@@ -118,8 +110,7 @@
 
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-primary rounded-pill px-4">Create poll</button>
-                    <a class="btn btn-outline-secondary rounded-pill px-4"
-                       asp-action="@(Model.Type == PollType.Awards ? "Awards" : "Community")">Cancel</a>
+                    <a class="btn btn-outline-secondary rounded-pill px-4" asp-action="@cancelAction">Cancel</a>
                 </div>
             </form>
         </div>
@@ -127,127 +118,11 @@
 </div>
 
 <template id="choiceTemplate">
-    <div class="choice-row">
-        <span class="choice-num"></span>
-        <input name="Choices[0].Text" class="form-control choice-text" maxlength="200" placeholder="Choice" />
-        <label class="choice-photo" title="Add a photo">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                <circle cx="12" cy="13" r="4" />
-            </svg>
-            <input type="file" name="Choices[0].Image" class="d-none choice-file"
-                   accept="image/png,image/jpeg,image/webp" />
-        </label>
-        <button type="button" class="btn-remove" aria-label="Remove choice">&times;</button>
-    </div>
+    <partial name="_ChoiceRow" model="new ChoiceInput()" />
 </template>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-
-    <script>
-        const MIN = 2, MAX = 10, MAX_BYTES = 2 * 1024 * 1024;
-        const list = document.getElementById('choiceList');
-        const addBtn = document.getElementById('addChoice');
-        const counter = document.getElementById('choiceCount');
-        const template = document.getElementById('choiceTemplate');
-        const typeAwards = document.getElementById('typeAwards');
-        const typeCommunity = document.getElementById('typeCommunity');
-
-        // Numbers the rows and renames the inputs: Choices[0].Text, Choices[1].Text, ...
-        // (MVC needs the indexes to be 0, 1, 2 with no gaps, even after rows are removed)
-        function refresh() {
-            const rows = list.querySelectorAll('.choice-row');
-            rows.forEach((row, i) => {
-                row.querySelector('.choice-num').textContent = i + 1;
-                row.querySelector('.choice-text').name = `Choices[${i}].Text`;
-                row.querySelector('.choice-file').name = `Choices[${i}].Image`;
-                row.querySelector('.btn-remove').disabled = rows.length <= MIN;
-            });
-            list.classList.toggle('awards-mode', typeAwards.checked);
-            addBtn.style.display = rows.length >= MAX ? 'none' : '';
-            counter.textContent = rows.length + ' of ' + MAX;
-        }
-
-        function clearPhoto(row) {
-            const label = row.querySelector('.choice-photo');
-            row.querySelector('.choice-file').value = '';
-            label.style.backgroundImage = '';
-            label.classList.remove('has-photo');
-        }
-
-        addBtn.addEventListener('click', () => {
-            list.appendChild(template.content.cloneNode(true));
-            refresh();
-            list.lastElementChild.querySelector('.choice-text').focus();
-        });
-
-        // One listener on the list, because rows are added and removed
-        list.addEventListener('click', e => {
-            const btn = e.target.closest('.btn-remove');
-            if (btn && !btn.disabled) {
-                btn.closest('.choice-row').remove();
-                refresh();
-            }
-        });
-
-        // A photo was chosen for a choice: size check + round preview
-        list.addEventListener('change', e => {
-            if (!e.target.matches('.choice-file')) return;
-            const row = e.target.closest('.choice-row');
-            const file = e.target.files[0];
-            if (!file) { clearPhoto(row); return; }
-            if (file.size > MAX_BYTES) {
-                alert('The photo must be 2 MB or smaller.');
-                clearPhoto(row);
-                return;
-            }
-            const label = row.querySelector('.choice-photo');
-            label.style.backgroundImage = `url("${URL.createObjectURL(file)}")`;
-            label.classList.add('has-photo');
-        });
-
-        // Pressing Enter in a choice adds a new one instead of submitting the form
-        list.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && e.target.matches('input[type=text], .choice-text')) {
-                e.preventDefault();
-                if (list.querySelectorAll('.choice-row').length < MAX) addBtn.click();
-            }
-        });
-
-        // Switching to Community removes the choice photos (they only exist in Awards)
-        typeAwards.addEventListener('change', refresh);
-        typeCommunity.addEventListener('change', () => {
-            list.querySelectorAll('.choice-row').forEach(clearPhoto);
-            refresh();
-        });
-
-        // Default dates, in the browser's own time
-        const pad = n => String(n).padStart(2, '0');
-        const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        const start = document.getElementById('StartDate');
-        const end = document.getElementById('EndDate');
-        if (!start.value) start.value = fmt(new Date());
-        if (!end.value) end.value = fmt(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-
-        document.getElementById('TimezoneOffset').value = new Date().getTimezoneOffset();
-
-        // Poll photo preview + size check
-        document.getElementById('Image').addEventListener('change', e => {
-            const file = e.target.files[0];
-            const img = document.getElementById('imagePreview');
-            if (!file) { img.classList.add('d-none'); return; }
-            if (file.size > MAX_BYTES) {
-                alert('The photo must be 2 MB or smaller.');
-                e.target.value = '';
-                img.classList.add('d-none');
-                return;
-            }
-            img.src = URL.createObjectURL(file);
-            img.classList.remove('d-none');
-        });
-
-        refresh();
-    </script>
+    <script src="~/js/poll-form.js" asp-append-version="true"></script>
+    <script src="~/js/create-poll.js" asp-append-version="true"></script>
 }
