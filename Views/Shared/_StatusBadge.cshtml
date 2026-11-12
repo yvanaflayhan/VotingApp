@@ -1,0 +1,10 @@
+@model string
+@{
+    var style = Model switch
+    {
+        PollStatus.Open => "bg-success-subtle text-success",
+        PollStatus.Upcoming => "bg-warning-subtle text-warning-emphasis",
+        _ => "bg-secondary-subtle text-secondary"
+    };
+}
+<span class="badge @style rounded-pill px-3">@Model</span>
