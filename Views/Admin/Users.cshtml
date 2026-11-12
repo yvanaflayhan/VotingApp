@@ -3,7 +3,7 @@
 }
 
 @section Styles {
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.11/css/dataTables.bootstrap5.min.css" />
+    <partial name="_DataTablesStyles" />
 }
 
 @Html.AntiForgeryToken()
@@ -15,13 +15,10 @@
         <span class="stat-chip" id="adminChip">... admin(s)</span>
     </div>
 
-    <div class="search-group">
-        <input id="txtSearch" class="form-control search-input" placeholder="Search users..." />
-        <button type="button" id="btnSearch" class="btn btn-primary rounded-pill px-4">Search</button>
-    </div>
+    <partial name="_SearchBox" model='"Search users..."' />
 </div>
 
-<div id="msg" class="alert border-0 shadow-sm rounded-4 d-none"></div>
+<partial name="_Alerts" />
 
 <div class="users-card">
     <div class="table-responsive">
@@ -58,171 +55,15 @@
 </div>
 
 @section Scripts {
-    <script src="https://cdn.datatables.net/1.13.11/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.11/js/dataTables.bootstrap5.min.js"></script>
-
+    <partial name="_DataTablesScripts" />
     <script>
-        const csrf = $('input[name="__RequestVerificationToken"]').val();
-
-        // Turns text into safe HTML
-        const esc = s => String(s ?? '').replace(/[&<>"']/g,
-            c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-        function showMessage(text, ok) {
-            $('#msg')
-                .removeClass('d-none alert-success alert-danger')
-                .addClass(ok ? 'alert-success' : 'alert-danger')
-                .text(text);
-            setTimeout(() => $('#msg').addClass('d-none'), 4000);
-        }
-
-        // Update the two counters every time the server answers
-        $('#usersTable').on('xhr.dt', function (e, settings, json) {
-            if (!json) return;
-            $('#totalChip').text(json.recordsTotal + ' users');
-            $('#adminChip').text(json.adminCount + ' admin(s)');
-        });
-
-        const table = $('#usersTable').DataTable({
-            serverSide: true,
-            processing: false,
-            pageLength: 20,
-            lengthChange: false,
-            autoWidth: false,
-            pagingType: 'simple',
-            ordering: false,
-            dom: 'rt<"d-flex justify-content-between align-items-center flex-wrap gap-2 p-3"ip>',
-            language: {
-                emptyTable: 'No users found.',
-                zeroRecords: 'No users found.',
-                info: 'Showing _START_ to _END_ of _TOTAL_',
-                infoEmpty: 'No users',
-                paginate: { previous: 'Previous', next: 'Next' }
-            },
-            ajax: {
-                url: '@Url.Action("List", "Admin")',
-                type: 'POST',
-                headers: { 'RequestVerificationToken': csrf },
-                data: function (d) {
-                    return {
-                        draw: d.draw,
-                        start: d.start,
-                        length: d.length,
-                        search: $('#txtSearch').val()
-                    };
-                },
-                error: function (xhr) {
-                    showMessage('Could not load users (error ' + xhr.status + ').', false);
-                }
-            },
-            columns: [
-                {
-                    title: 'User', data: 'fullName', width: '45%',
-                    render: function (data, type, row) {
-                        if (type !== 'display') return data;
-                        const name = esc(data || row.userName);
-                        const initial = esc((data || row.userName || '?').charAt(0).toUpperCase());
-                        const you = row.isMe ? '<span class="badge bg-secondary ms-1">You</span>' : '';
-                        const root = row.isRoot ? '<span class="badge bg-primary ms-1">Main admin</span>' : '';
-                        return `<div class="d-flex align-items-center">
-                                    <span class="avatar me-3">${initial}</span>
-                                    <div>
-                                        <div class="fw-semibold">${name}${root}${you}</div>
-                                        <div class="text-muted small">${esc(row.email)}</div>
-                                    </div>
-                                </div>`;
-                    }
-                },
-                {
-                    title: 'Username', data: 'userName', width: '25%',
-                    className: 'd-none d-md-table-cell text-muted'
-                },
-                {
-                    title: 'Role', data: 'role', width: '30%', className: 'text-end',
-                    render: function (data, type, row) {
-                        if (type !== 'display') return data;
-                        const id = esc(row.id);
-                        const name = esc(row.userName);
-                        // Disabled for the main admin (never changeable) and for yourself
-                        const disabled = (row.isMe || row.isRoot) ? 'disabled' : '';
-                        const checked = r => data === r ? 'checked' : '';
-                        return `<div class="btn-group role-switch" role="group">
-                                    <input type="radio" class="btn-check role-radio" name="role-${id}" id="user-${id}"
-                                           value="User" ${checked('User')} ${disabled}
-                                           data-id="${id}" data-username="${name}" data-original="${esc(data)}" />
-                                    <label class="btn btn-outline-primary btn-sm px-3" for="user-${id}">User</label>
-
-                                    <input type="radio" class="btn-check role-radio" name="role-${id}" id="admin-${id}"
-                                           value="Admin" ${checked('Admin')} ${disabled}
-                                           data-id="${id}" data-username="${name}" data-original="${esc(data)}" />
-                                    <label class="btn btn-outline-primary btn-sm px-3" for="admin-${id}">Admin</label>
-                                </div>`;
-                    }
-                }
-            ]
-        });
-
-        // ----- Search: reload the table, back to page 1 -----
-        $('#btnSearch').on('click', () => table.ajax.reload());
-        $('#txtSearch').on('keydown', e => { if (e.key === 'Enter') table.ajax.reload(); });
-
-        // ----- Role change with confirmation -----
-        const modalEl = document.getElementById('confirmRoleModal');
-        const modal = new bootstrap.Modal(modalEl);
-        let pendingRadio = null;
-        let confirmed = false;
-
-        // The rows are redrawn by AJAX, so the event is attached to the table, not to each radio
-        $('#usersTable').on('change', '.role-radio', function () {
-            pendingRadio = this;
-            confirmed = false;
-
-            $('#mUser').text(this.dataset.username);
-            $('#mFrom').text(this.dataset.original);
-            $('#mTo').text(this.value);
-
-            const toAdmin = this.value === 'Admin';
-            $('#confirmIcon').toggleClass('warn', toAdmin);
-            $('#mNote').text(toAdmin
-                ? 'Admins can manage all users and polls.'
-                : 'They will become a normal user and lose access to the admin pages.');
-
-            modal.show();
-        });
-
-        $('#confirmRoleBtn').on('click', async () => {
-            confirmed = true;
-            modal.hide();
-
-            const body = new URLSearchParams({
-                userId: pendingRadio.dataset.id,
-                role: pendingRadio.value
-            });
-
-            try {
-                const response = await fetch('@Url.Action("ChangeRole", "Admin")', {
-                    method: 'POST',
-                    headers: {
-                        'RequestVerificationToken': csrf,
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    },
-                    body
-                });
-                const result = await response.json();
-                showMessage(result.message, result.success);
-            } catch {
-                showMessage('Something went wrong. Please try again.', false);
+        // Values only the server knows. users-admin.js reads them from here.
+        window.UsersPage = {
+            urls: {
+                list: '@Url.Action("List", "Admin")',
+                changeRole: '@Url.Action("ChangeRole", "Admin")'
             }
-
-            table.ajax.reload(null, false);   // false = stay on the same page
-        });
-
-        // Closed without confirming (Cancel, X, outside click): put the old value back
-        modalEl.addEventListener('hidden.bs.modal', () => {
-            if (!confirmed && pendingRadio) {
-                $(pendingRadio).closest('.btn-group')
-                    .find(`input[value="${pendingRadio.dataset.original}"]`).prop('checked', true);
-            }
-        });
+        };
     </script>
+    <script src="~/js/users-admin.js" asp-append-version="true"></script>
 }
