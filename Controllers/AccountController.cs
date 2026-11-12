@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Voting_app.Common;
 using Voting_app.Models;
 
 namespace Voting_app.Controllers
@@ -17,18 +18,17 @@ namespace Voting_app.Controllers
             _signInManager = signInManager;
         }
 
+        #region Public actions
+
         [HttpGet]
-        public IActionResult Register()
-        {
-            return View();
-        }
+        public IActionResult Register() => View();
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(RegisterViewModel model)
         {
             if (!ModelState.IsValid)
-                return View(model); // show the form again with errors
+                return View(model);
 
             var user = new ApplicationUser
             {
@@ -39,44 +39,37 @@ namespace Voting_app.Controllers
             };
 
             var result = await _userManager.CreateAsync(user, model.Password);
-
-            if (result.Succeeded)
+            if (!result.Succeeded)
             {
-                await _userManager.AddToRoleAsync(user, "User");
-                await _signInManager.SignInAsync(user, isPersistent: false);
-                return RedirectToAction("Index", "Home");
+                foreach (var error in result.Errors)
+                    ModelState.AddModelError(string.Empty, error.Description);
+                return View(model);
             }
 
-            foreach (var error in result.Errors)
-                ModelState.AddModelError(string.Empty, error.Description);
-
-            return View(model);
+            // A public form only ever creates normal users
+            await _userManager.AddToRoleAsync(user, Roles.User);
+            await _signInManager.SignInAsync(user, isPersistent: false);
+            return RedirectToAction("Index", "Home");
         }
 
         [HttpGet]
-        public IActionResult Login()
-        {
-            return View();
-        }
+        public IActionResult Login() => View();
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(LoginViewModel model)
         {
-            if(!ModelState.IsValid)
+            if (!ModelState.IsValid)
                 return View(model);
-            
-            var result = await _signInManager.PasswordSignInAsync(
-                model.Username,
-                model.Password,
-                model.RememberMe,
-                lockoutOnFailure: false
-            );
 
-            if(result.Succeeded)
+            var result = await _signInManager.PasswordSignInAsync(
+                model.Username, model.Password, model.RememberMe, lockoutOnFailure: false);
+
+            if (result.Succeeded)
                 return RedirectToAction("Index", "Home");
 
-            ModelState.AddModelError(string.Empty, "Wrong Username or password.");
+            // The same message for a wrong username or a wrong password
+            ModelState.AddModelError(string.Empty, "Wrong username or password.");
             return View(model);
         }
 
@@ -85,14 +78,11 @@ namespace Voting_app.Controllers
         public async Task<IActionResult> Logout()
         {
             await _signInManager.SignOutAsync();
-            return RedirectToAction("Index" , "Home");
+            return RedirectToAction("Index", "Home");
         }
 
-        public IActionResult AccessDenied()
-        {
-            return View();
-        }
+        public IActionResult AccessDenied() => View();
 
-    
+        #endregion
     }
 }
