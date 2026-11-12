@@ -23,11 +23,7 @@ namespace Voting_app.Models
         public DateTime? EndDate { get; set; }
 
         public IFormFile? Image { get; set; }
-
-        // Minutes between UTC and the browser's time, sent by JavaScript
         public int TimezoneOffset { get; set; }
-
-        // Bound from several inputs that all have name="Choices"
         public List<ChoiceInput> Choices { get; set; } = new();
     }
     public class ChoiceInput

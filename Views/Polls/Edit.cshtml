@@ -1,9 +1,8 @@
-@using Voting_app.Models
 @model EditPollViewModel
 
 @{
     ViewData["Title"] = "Edit poll";
-    var back = Model.Type == PollType.Awards ? "Awards" : "Community";
+    var backAction = User.IsAdmin() ? (Model.Type == PollType.Awards ? "Awards" : "Community") : "Mine";
 }
 
 <div class="d-flex justify-content-center py-3">
@@ -32,7 +31,7 @@
                     <span asp-validation-for="Description" class="text-danger small"></span>
                 </div>
 
-                <!-- Photo -->
+                <!-- Poll photo -->
                 <div class="mb-4">
                     <label class="form-label fw-semibold">
                         Photo <span class="text-muted fw-normal">(JPG / PNG / WEBP, max 2 MB)</span>
@@ -53,7 +52,7 @@
                     <span asp-validation-for="Image" class="text-danger small d-block"></span>
                 </div>
 
-                <!-- Dates -->
+                <!-- Dates (poll-form.js shows the saved dates, in the visitor's local time) -->
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
                         <label asp-for="StartDate" class="form-label fw-semibold"></label>
@@ -74,13 +73,56 @@
                     </div>
                 </div>
 
+                <!-- Choice photos: Awards only. The text of the choices cannot be changed. -->
+                @if (Model.Type == PollType.Awards && Model.Choices.Any())
+                {
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">
+                            Choice photos <span class="text-muted fw-normal">(JPG / PNG / WEBP, max 2 MB)</span>
+                        </label>
+
+                        @for (var i = 0; i < Model.Choices.Count; i++)
+                        {
+                            var choice = Model.Choices[i];
+                            var name = choice.Text ?? "?";
+
+                            <div class="edit-choice">
+                                <input type="hidden" name="Choices[@i].Id" value="@choice.Id" />
+
+                                @if (!string.IsNullOrEmpty(choice.CurrentImagePath))
+                                {
+                                    <img src="@choice.CurrentImagePath" class="opt-thumb lg" alt="" />
+                                }
+                                else
+                                {
+                                    <span class="opt-thumb lg edit-choice-ph">@name.Substring(0, 1).ToUpper()</span>
+                                }
+
+                                <div class="flex-grow-1 min-w-0">
+                                    <div class="fw-semibold text-truncate">@name</div>
+                                    <input type="file" name="Choices[@i].Image" class="form-control form-control-sm mt-1"
+                                           accept="image/png,image/jpeg,image/webp" />
+                                    @if (!string.IsNullOrEmpty(choice.CurrentImagePath))
+                                    {
+                                        <div class="form-check mt-1">
+                                            <input type="checkbox" name="Choices[@i].RemoveImage" value="true"
+                                                   class="form-check-input" id="remove-@i" />
+                                            <label class="form-check-label small" for="remove-@i">Remove this photo</label>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+
                 <div class="alert alert-light border rounded-4 small">
-                    The type and the choices cannot be changed here.
+                    The type and the choices cannot be changed here@(Model.Type == PollType.Awards ? ", only their photos" : "").
                 </div>
 
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-primary rounded-pill px-4">Save changes</button>
-                    <a class="btn btn-outline-secondary rounded-pill px-4" asp-action="@back">Cancel</a>
+                    <a class="btn btn-outline-secondary rounded-pill px-4" asp-action="@backAction">Cancel</a>
                 </div>
             </form>
         </div>
@@ -89,26 +131,5 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-
-    <script>
-        // The server stores UTC. The inputs must show the admin's local time.
-        const pad = n => String(n).padStart(2, '0');
-        const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-
-        ['StartDate', 'EndDate'].forEach(id => {
-            const el = document.getElementById(id);
-            if (!el.value) el.value = fmt(new Date(el.dataset.utc));    // keeps what was typed after an error
-        });
-
-        document.getElementById('TimezoneOffset').value = new Date().getTimezoneOffset();
-
-        // Size check before uploading (the server checks again)
-        document.getElementById('Image').addEventListener('change', e => {
-            const file = e.target.files[0];
-            if (file && file.size > 2 * 1024 * 1024) {
-                alert('The photo must be 2 MB or smaller.');
-                e.target.value = '';
-            }
-        });
-    </script>
+    <script src="~/js/poll-form.js" asp-append-version="true"></script>
 }

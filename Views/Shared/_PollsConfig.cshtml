@@ -1,0 +1,21 @@
+@{
+    var type = (PollType)ViewBag.Type;
+    var mine = ViewBag.Mine == true;
+}
+
+<script>
+    // Values only the server knows. The .js files read them from here.
+    window.PollsPage = {
+        type: '@type',
+        mine: @(mine ? "true" : "false"),
+        isAuth: @(User.Identity?.IsAuthenticated == true ? "true" : "false"),
+        urls: {
+            list: '@Url.Action("List", "Polls")',
+            details: '@Url.Action("Details", "Polls")',
+            edit: '@Url.Action("Edit", "Polls")',
+            vote: '@Url.Action("Vote", "Polls")',
+            remove: '@Url.Action("Delete", "Polls")',
+            login: '@Url.Action("Login", "Account")'
+        }
+    };
+</script>

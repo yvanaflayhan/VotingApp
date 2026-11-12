@@ -2,35 +2,47 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Voting_app.Data;
 using Voting_app.Models;
+using Voting_app.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-//Tell the app how to connect to PostgreSQL using your connection string
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+#region Services
 
-//
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => {
-    options.SignIn.RequireConfirmedAccount = false;
-})
-.AddEntityFrameworkStores<ApplicationDbContext>()
-.AddDefaultTokenProviders();
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+);
+
+builder
+    .Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+    {
+        options.SignIn.RequireConfirmedAccount = false;
+    })
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = "/Account/Login";
     options.AccessDeniedPath = "/Account/AccessDenied";
+    options.ExpireTimeSpan = TimeSpan.FromDays(7); // the default is 14 days
+    options.SlidingExpiration = true; // renewed while the person keeps using the app
 });
 
-
+// A role change must apply on the next request, not after 30 minutes
 builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 {
     options.ValidationInterval = TimeSpan.Zero;
 });
 
-
-// Add services to the container.
 builder.Services.AddControllersWithViews();
+
+// Our services: one instance per request
+builder.Services.AddScoped<IImageService, ImageService>();
+builder.Services.AddScoped<IPollService, PollService>();
+builder.Services.AddScoped<IVoteService, VoteService>();
+builder.Services.AddScoped<IUserService, UserService>();
+
+#endregion
 
 var app = builder.Build();
 
@@ -39,30 +51,24 @@ using (var scope = app.Services.CreateScope())
     await DbSeeder.SeedAsync(scope.ServiceProvider, app.Configuration);
 }
 
-// Configure the HTTP request pipeline.
+#region Pipeline
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
-
 app.UseStaticFiles();
-
 app.UseRouting();
-
-app.UseAuthentication();
-
-app.UseAuthorization();
-
+app.UseAuthentication(); // who are you?
+app.UseAuthorization(); // are you allowed?
 app.MapStaticAssets();
 
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}")//Routing
+app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
 
+#endregion
 
 app.Run();

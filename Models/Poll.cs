@@ -1,6 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Xml.Serialization;
-
 namespace Voting_app.Models
 {
     public class Poll

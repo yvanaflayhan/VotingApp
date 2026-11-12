@@ -1,16 +1,11 @@
-@model Voting_app.Models.PollDetailsViewModel
+@model PollDetailsViewModel
 
 @{
     ViewData["Title"] = Model.Title;
-    var backAction = Model.Type == Voting_app.Models.PollType.Awards ? "Awards" : "Community";
-    var badge = Model.Status switch
-    {
-        "Open" => "bg-success-subtle text-success",
-        "Upcoming" => "bg-warning-subtle text-warning-emphasis",
-        _ => "bg-secondary-subtle text-secondary"
-    };
-    var isAdmin = User.IsInRole("Admin");
-    var canVote = Model.Status == "Open" && Model.IsAuthenticated && !isAdmin && Model.MyChoiceId == null;
+    var backAction = Model.Type == PollType.Awards ? "Awards" : "Community";
+    var isAdmin = User.IsAdmin();
+    var isOpen = Model.Status == PollStatus.Open;
+    var canVote = isOpen && Model.IsAuthenticated && !isAdmin && Model.MyChoiceId == null;
     var myChoice = Model.Choices.FirstOrDefault(c => c.Id == Model.MyChoiceId);
 }
 
@@ -29,7 +24,7 @@
     <div class="p-4 p-md-5">
         <div class="mb-2">
             <span class="badge bg-primary-subtle text-primary rounded-pill px-3">@Model.Type</span>
-            <span class="badge @badge rounded-pill px-3">@Model.Status</span>
+            <partial name="_StatusBadge" model="Model.Status" />
         </div>
 
         <h2 class="fw-bold">@Model.Title</h2>
@@ -47,25 +42,37 @@
             </div>
             <div class="col-12 col-md-6">
                 <div class="info-box">
-                    <span>@(Model.Status == "Upcoming" ? "Starts" : "Time remaining")</span>
+                    <span>@(Model.Status == PollStatus.Upcoming ? "Starts" : "Time remaining")</span>
                     <strong id="countdown" data-status="@Model.Status" data-start="@Model.StartDate.ToString("o")"
                             data-end="@Model.EndDate.ToString("o")"></strong>
                 </div>
             </div>
         </div>
 
-        <!-- Voting area: depends on who is looking and on the poll status -->
+        <!-- What this visitor can do: depends on who they are and on the poll status -->
         @if (canVote)
         {
-            <h5 class="fw-bold mt-4 mb-3">Cast your vote</h5>
-            @Html.AntiForgeryToken()
-            @foreach (var c in Model.Choices)
-            {
-                <input type="radio" class="btn-check" name="choiceId" id="choice-@c.Id" value="@c.Id" />
-                <label class="vote-option" for="choice-@c.Id">@c.Text</label>
-            }
-            <div id="voteMsg" class="alert alert-danger border-0 rounded-4 d-none mt-3"></div>
-            <button type="button" id="voteBtn" class="btn btn-primary rounded-pill px-4 mt-3" disabled>Vote</button>
+            <div id="voteArea" data-poll-id="@Model.Id" data-vote-url="@Url.Action("Vote", "Polls")">
+                <h5 class="fw-bold mt-4 mb-3">Cast your vote</h5>
+                @Html.AntiForgeryToken()
+
+                @foreach (var option in Model.Choices)
+                {
+                    <label class="vote-choice">
+                        <input type="radio" name="choiceId" value="@option.Id" />
+                        <span>
+                            @if (!string.IsNullOrEmpty(option.ImageUrl))
+                            {
+                                <img src="@option.ImageUrl" class="opt-thumb" alt="" />
+                            }
+                            @option.Text
+                        </span>
+                    </label>
+                }
+
+                <div id="voteMsg" class="alert alert-danger border-0 rounded-4 d-none mt-3"></div>
+                <button type="button" id="voteBtn" class="btn btn-primary rounded-pill px-4 mt-3" disabled>Vote</button>
+            </div>
         }
         else if (myChoice != null)
         {
@@ -73,13 +80,13 @@
                 You voted for <strong>@myChoice.Text</strong>. A vote cannot be changed.
             </div>
         }
-        else if (isAdmin && Model.Status == "Open")
+        else if (isAdmin && isOpen)
         {
             <div class="alert alert-light border rounded-4 mt-4">
                 Admins manage polls and cannot vote. You can see the live results below.
             </div>
         }
-        else if (Model.Status == "Open" && !Model.IsAuthenticated)
+        else if (isOpen && !Model.IsAuthenticated)
         {
             <div
                 class="alert alert-light border rounded-4 mt-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
@@ -87,36 +94,40 @@
                 <a class="btn btn-primary btn-sm rounded-pill px-3" asp-controller="Account" asp-action="Login">Login</a>
             </div>
         }
-        else if (Model.Status == "Upcoming")
+        else if (Model.Status == PollStatus.Upcoming)
         {
             <div class="alert alert-warning border-0 rounded-4 mt-4">This poll has not started yet.</div>
         }
-        else if (Model.Status == "Closed")
+        else if (Model.Status == PollStatus.Closed)
         {
             <div class="alert alert-secondary border-0 rounded-4 mt-4">This poll is closed.</div>
         }
 
         <h5 class="fw-bold mt-4 mb-3">Results</h5>
-        @foreach (var c in Model.Choices)
+        @foreach (var option in Model.Choices)
         {
             <div class="result-row">
                 <div class="d-flex justify-content-between mb-1">
-                    <span class="fw-medium">
-                        @c.Text
-                        @if (c.Id == Model.MyChoiceId)
+                    <span class="fw-medium d-flex align-items-center gap-2">
+                        @if (!string.IsNullOrEmpty(option.ImageUrl))
                         {
-                            <span class="badge bg-primary-subtle text-primary rounded-pill ms-1">Your vote</span>
+                            <img src="@option.ImageUrl" class="opt-thumb lg" alt="" />
+                        }
+                        <span>@option.Text</span>
+                        @if (option.Id == Model.MyChoiceId)
+                        {
+                            <span class="badge bg-primary-subtle text-primary rounded-pill">Your vote</span>
                         }
                     </span>
-                    <span class="text-muted small">@c.Votes votes · @c.Percent%</span>
+                    <span class="text-muted small">@option.Votes votes · @option.Percent%</span>
                 </div>
                 <div class="progress" style="height: 10px;">
-                    <div class="progress-bar" role="progressbar" style="width: @c.Percent%"></div>
+                    <div class="progress-bar" role="progressbar" style="width: @option.Percent%"></div>
                 </div>
             </div>
         }
 
-        @if (User.IsInRole("Admin"))
+        @if (isAdmin)
         {
             <hr class="my-4" />
             <p class="text-muted small mb-0">Created by <strong>@Model.CreatorName</strong></p>
@@ -125,69 +136,5 @@
 </div>
 
 @section Scripts {
-    <script>
-        // ----- Countdown -----
-        const el = document.getElementById('countdown');
-        const start = new Date(el.dataset.start);
-        const end = new Date(el.dataset.end);
-
-        function tick() {
-            if (el.dataset.status === 'Upcoming') {
-                el.textContent = start.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
-                return;
-            }
-            const ms = end - new Date();
-            if (ms <= 0) { el.textContent = 'Poll ended'; return; }
-            const d = Math.floor(ms / 864e5);
-            const h = Math.floor(ms % 864e5 / 36e5);
-            const m = Math.floor(ms % 36e5 / 6e4);
-            el.textContent = `${d}d ${h}h ${m}m`;
-        }
-        tick();
-        setInterval(tick, 30000);
-
-        // ----- Voting -----
-        const voteBtn = document.getElementById('voteBtn');
-        if (voteBtn) {
-            const pollId = @Model.Id;
-            const csrf = document.querySelector('input[name="__RequestVerificationToken"]').value;
-            const voteMsg = document.getElementById('voteMsg');
-
-            // The Vote button stays disabled until a choice is selected
-            document.querySelectorAll('input[name="choiceId"]').forEach(r =>
-                r.addEventListener('change', () => voteBtn.disabled = false));
-
-            voteBtn.addEventListener('click', async () => {
-                const selected = document.querySelector('input[name="choiceId"]:checked');
-                if (!selected) return;
-
-                voteBtn.disabled = true;
-                voteMsg.classList.add('d-none');
-
-                try {
-                    const response = await fetch('@Url.Action("Vote", "Polls")', {
-                        method: 'POST',
-                        headers: {
-                            'RequestVerificationToken': csrf,
-                            'Content-Type': 'application/x-www-form-urlencoded'
-                        },
-                        body: new URLSearchParams({ pollId: pollId, choiceId: selected.value })
-                    });
-                    const result = await response.json();
-
-                    if (result.success) {
-                        location.reload();      // the page now shows "You voted for..." and the new results
-                    } else {
-                        voteMsg.textContent = result.message;
-                        voteMsg.classList.remove('d-none');
-                        voteBtn.disabled = false;
-                    }
-                } catch {
-                    voteMsg.textContent = 'Something went wrong. Please try again.';
-                    voteMsg.classList.remove('d-none');
-                    voteBtn.disabled = false;
-                }
-            });
-        }
-    </script>
+    <script src="~/js/details.js" asp-append-version="true"></script>
 }
