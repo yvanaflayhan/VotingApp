@@ -9,11 +9,13 @@ namespace Voting_app.Controllers
     {
         private readonly IPollService _polls;
         private readonly IVoteService _votes;
+        private readonly IResultsService _results;
 
-        public PollsController(IPollService polls, IVoteService votes)
+        public PollsController(IPollService polls, IVoteService votes, IResultsService results)
         {
             _polls = polls;
             _votes = votes;
+            _results = results;
         }
 
         #region Public actions
@@ -46,6 +48,22 @@ namespace Voting_app.Controllers
                 return Forbid();
 
             return Json(await _polls.GetListAsync(request, CurrentUserId));
+        }
+
+        [HttpPost] // The data of the Results page: finished polls with their winners (called by DataTables)
+        public async Task<IActionResult> ResultsList([FromForm] ResultsRequest request)
+        {
+            var page = await _results.GetFinishedAsync(request, DateTime.UtcNow);
+
+            return Json(
+                new DataTableResponse<PollResultItem>
+                {
+                    Draw = request.Draw,
+                    RecordsTotal = page.Total,
+                    RecordsFiltered = page.Filtered,
+                    Data = page.Items,
+                }
+            );
         }
 
         public async Task<IActionResult> Details(int id)
