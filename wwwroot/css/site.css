@@ -130,6 +130,10 @@ body {
   border-radius: var(--radius-pill);
 }
 
+.stat-chip:empty {
+  display: none;
+}
+
 /* Search box and its button, side by side */
 .search-group {
   display: flex;
@@ -1061,7 +1065,26 @@ body.auth-page {
   }
 }
 
-/* ===== 13. Results page ===== */
+/* ---------- 13. Results page ---------- */
+
+/* The tabs: All | Community | Awards (same look as the navbar links) */
+.result-tabs .nav-link {
+  color: var(--text-soft);
+  font-weight: 500;
+  border-radius: var(--radius-pill);
+}
+
+.result-tabs .nav-link:hover {
+  background: var(--hover);
+  color: var(--brand);
+}
+
+.result-tabs .nav-link.active {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+/* The winner box inside a card */
 .result-winner {
   display: flex;
   align-items: center;
@@ -1069,14 +1092,14 @@ body.auth-page {
   padding: .7rem 1rem;
   margin: .6rem 0 .9rem;
   border-radius: 1rem;
-  background: color-mix(in srgb, var(--brand) 10%, white);
-  border: 1px solid color-mix(in srgb, var(--brand) 25%, white);
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-light);
 }
 
 .result-winner.none {
-  background: #f3f4f6;
-  border-color: #e5e7eb;
-  color: #6b7280;
+  background: var(--hover);
+  border-color: var(--line-strong);
+  color: var(--muted);
 }
 
 .result-trophy {
@@ -1093,6 +1116,9 @@ body.auth-page {
 }
 
 .result-name {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
   font-weight: 700;
 }
 
@@ -1100,7 +1126,7 @@ body.auth-page {
   margin-left: auto;
   text-align: right;
   font-size: .85rem;
-  color: #6b7280;
+  color: var(--muted);
   white-space: nowrap;
 }
 
@@ -1110,10 +1136,11 @@ body.auth-page {
   color: var(--brand);
 }
 
+/* In the list of choices, the winner is bold and has the strong bar */
 .opt-line.is-winner .opt-text {
   font-weight: 700;
 }
 
 .opt-line.is-winner .progress-bar {
-  background: var(--brand);
+  background: var(--brand-gradient-bar);
 }
