@@ -186,10 +186,18 @@ const App = (() => {
         return `<div class="icon-actions">${edit}${remove}</div>`;
     }
 
+    //Animation
+
+    // The bars start at 0 and grow to their value. Call it after the cards are drawn.
+    function growBars(scope) {
+        requestAnimationFrame(() => requestAnimationFrame(() =>
+            scope.querySelectorAll('.progress-bar[data-w]').forEach(bar => bar.style.width = bar.dataset.w + '%')));
+    }
+
     return {
         esc, token, post, showMessage,
         firstLetter, formatDate, formatDateTime, toLocalInput,
-        statusBadge, checkImageSize,
+        statusBadge, checkImageSize, growBars,
         display, createTable, initPollDelete, pollActions
     };
 })();

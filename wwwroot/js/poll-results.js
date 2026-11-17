@@ -1,13 +1,13 @@
 // The Results page: finished polls and their winners, one card per row (DataTables, server-side).
 (() => {
-    const { esc, formatDate, firstLetter, display } = App;
+    const { esc, formatDate, firstLetter, display, growBars } = App;
     const cfg = window.ResultsPage;
 
     const PAGE_SIZE = 4;
     const MAX_OPTIONS_SHOWN = 6;
     const CARDS_DOM = 'rt<"d-flex justify-content-between align-items-center flex-wrap gap-2 mt-4"ip>';
 
-    let type = '';                    // '' = all, or 'Community' / 'Awards'
+    let type = '';   
 
     //Pieces of a card
 
@@ -16,7 +16,6 @@
 
     const thumb = c => c.imageUrl ? `<img class="opt-thumb" src="${esc(c.imageUrl)}" alt="" loading="lazy" />` : '';
 
-    // The box with the winner (or the winners if it is a tie, or a note if nobody voted)
     function winnerHtml(poll) {
         const winners = poll.choices.filter(c => c.isWinner);
 
@@ -74,13 +73,7 @@
         </div>`.trim();
     }
 
-    // The bars start at 0 and grow to their value (same as poll-cards.js: we merge them in the cleanup)
-    function growBars(scope) {
-        requestAnimationFrame(() => requestAnimationFrame(() =>
-            scope.querySelectorAll('.progress-bar[data-w]').forEach(bar => bar.style.width = bar.dataset.w + '%')));
-    }
-
-    //The table
+    //The table (the search box and button are handled by App.createTable, like on the other pages)
 
     const table = App.createTable('#resultsTable', {
         url: cfg.urls.list,
@@ -97,19 +90,11 @@
         drawCallback: () => growBars(document.getElementById('resultsTable'))
     });
 
-    //Tabs and search
 
     $('#resultTabs').on('click', 'button', function () {
         type = this.dataset.type;
         $('#resultTabs .nav-link').removeClass('active');
         this.classList.add('active');
         table.ajax.reload();                         // back to page 1
-    });
-
-    let timer;
-    $('#resultsSearch').on('input', function () {
-        const text = this.value;
-        clearTimeout(timer);
-        timer = setTimeout(() => table.search(text).draw(), 300);     // wait until the user stops typing
     });
 })();
