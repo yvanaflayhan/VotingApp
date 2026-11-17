@@ -7,7 +7,7 @@
     const MAX_OPTIONS_SHOWN = 6;
     const CARDS_DOM = 'rt<"d-flex justify-content-between align-items-center flex-wrap gap-2 mt-4"ip>';
 
-    let type = '';   
+    let type = '';
 
     //Pieces of a card
 
@@ -81,7 +81,7 @@
         dom: CARDS_DOM,
         extraData: () => ({ type }),
         language: {
-            emptyTable: 'No finished polls yet.',
+            emptyTable: cfg.emptyText,
             zeroRecords: 'No results found.',
             infoEmpty: 'No results'
         },

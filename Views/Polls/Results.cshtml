@@ -1,29 +1,43 @@
 @{
     ViewData["Title"] = "Results";
+
+    var isAuth = User.Identity?.IsAuthenticated == true;
+    var intro = User.IsAdmin()
+    ? $"All the polls that ended in the last {ResultsRules.KeepDays} days."
+    : isAuth
+        ? $"The Community polls you voted in that ended in the last {ResultsRules.KeepDays} days."
+        : "Log in to see the results of the polls you voted in.";
+    var emptyText = isAuth ? "No finished polls to show yet." : "Log in to see your results.";
 }
 
 @section Styles {
     <partial name="_DataTablesStyles" />
 }
 
-<div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
+@Html.AntiForgeryToken()
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-3">
     <div>
-        <h2 class="fw-bold mb-1">Results</h2>
-        <p class="text-muted small mb-2">Polls that ended in the last @ResultsRules.KeepDays days.</p>
-        <span class="stat-chip" id="resultsChip"></span>
+        <h2 class="fw-bold mb-2">Results</h2>
+        <span class="stat-chip" id="resultsChip">... finished polls</span>
     </div>
-    <div class="search-group">
-        <input type="search" id="txtSearch" class="form-control search-input" placeholder="Search a poll..."
-               autocomplete="off" />
-        <button type="button" id="btnSearch" class="btn btn-primary rounded-pill px-4">Search</button>
-    </div>
+
+    <partial name="_SearchBox" model='"Search results..."' />
 </div>
 
-<ul class="nav nav-pills result-tabs mb-3" id="resultTabs">
-    <li class="nav-item"><button type="button" class="nav-link active" data-type="">All</button></li>
-    <li class="nav-item"><button type="button" class="nav-link" data-type="Community">Community</button></li>
-    <li class="nav-item"><button type="button" class="nav-link" data-type="Awards">Awards</button></li>
-</ul>
+<p class="text-muted small mb-3">@intro</p>
+
+@if (User.IsAdmin())
+{
+    <ul class="nav nav-pills result-tabs mb-3" id="resultTabs">
+        <li class="nav-item"><button type="button" class="nav-link active" data-type="">All</button></li>
+        <li class="nav-item"><button type="button" class="nav-link" data-type="Community">Community</button></li>
+        <li class="nav-item"><button type="button" class="nav-link" data-type="Awards">Awards</button></li>
+    </ul>
+    
+}
+
+
 
 <div class="cards-wrap">
     <table id="resultsTable" class="cards-table"></table>
@@ -33,6 +47,7 @@
     <partial name="_DataTablesScripts" />
     <script>
         window.ResultsPage = {
+            emptyText: '@emptyText',
             urls: {
                 list: '@Url.Action("ResultsList", "Polls")',
                 details: '@Url.Action("Details", "Polls")'
