@@ -261,6 +261,44 @@ body {
   box-shadow: 0 2px 16px rgba(17, 24, 39, .06);
 }
 
+/* The Community menu of a user: Community polls / My polls */
+.site-nav .dropdown-toggle::after {
+  display: none;
+  /* no arrow */
+}
+
+.site-nav .dropdown-menu {
+  min-width: 11rem;
+  margin-top: 0;
+  padding: .5rem;
+  border: 0;
+  border-radius: 1rem;
+  box-shadow: var(--shadow-card);
+}
+
+.site-nav .dropdown-item {
+  padding: .55rem 1rem;
+  border-radius: var(--radius-pill);
+  font-weight: 500;
+  color: var(--text-soft);
+}
+
+.site-nav .dropdown-item:hover,
+.site-nav .dropdown-item:focus,
+.site-nav .dropdown-item.active {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+/* Computer screens: the menu opens when the mouse is over "Community" */
+@media (min-width: 768px) {
+  .site-nav .dropdown:hover>.dropdown-menu {
+    display: block;
+    top: 100%;
+    left: 0;
+  }
+}
+
 /* The logo is plain text, not a link */
 .brand-logo {
   display: inline-flex;

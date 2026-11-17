@@ -50,15 +50,15 @@
                                 <li class="nav-item dropdown">
                                     <a class="nav-link dropdown-toggle @(controller == "Polls" && (action == "Community" || action == "Mine") ? "active" : "")"
                                        href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Community</a>
-                                    <ul class="dropdown-menu border-0 shadow rounded-4 p-2">
-                                        <li><a class="dropdown-item rounded-3" asp-controller="Polls"
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item @Active("Polls", "Community")" asp-controller="Polls"
                                                    asp-action="Community">Community polls</a></li>
-                                            <li><a class="dropdown-item rounded-3" asp-controller="Polls" asp-action="Mine">My
-                                                polls</a></li>
+                                            <li><a class="dropdown-item @Active("Polls", "Mine")" asp-controller="Polls"
+                                                       asp-action="Mine">My polls</a></li>
                                             </ul>
                                         </li>
                                     }
-                            else
+    else
                                     {
                                         <li class="nav-item">
                                             <a class="nav-link @Active("Polls", "Community")" asp-controller="Polls"
@@ -72,7 +72,8 @@
                                     </li>
 
                                     <li class="nav-item">
-                                        <a class="nav-link" asp-controller="Polls" asp-action="Results">Results</a>
+                                        <a class="nav-link @Active("Polls", "Results")" asp-controller="Polls"
+                                           asp-action="Results">Results</a>
                                     </li>
 
                                     @if (isAdmin)
