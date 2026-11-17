@@ -53,7 +53,12 @@ namespace Voting_app.Controllers
         [HttpPost] // The data of the Results page: finished polls with their winners (called by DataTables)
         public async Task<IActionResult> ResultsList([FromForm] ResultsRequest request)
         {
-            var page = await _results.GetFinishedAsync(request, DateTime.UtcNow);
+            var page = await _results.GetFinishedAsync(
+                request,
+                DateTime.UtcNow,
+                CurrentUserId,
+                IsAdmin
+            );
 
             return Json(
                 new DataTableResponse<PollResultItem>
