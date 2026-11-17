@@ -2,5 +2,36 @@
     ViewData["Title"] = "Results";
 }
 
-<h2 class="fw-bold mb-1">Results</h2>
-<p class="text-muted">The finished polls and their winners will appear here.</p>
+@section Styles {
+    <partial name="_DataTablesStyles" />
+}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+        <h2 class="fw-bold mb-0">Results</h2>
+        <span class="text-muted small" id="resultsChip"></span>
+    </div>
+    <input type="search" id="resultsSearch" class="form-control rounded-pill w-auto" placeholder="Search a poll..."
+           autocomplete="off" />
+</div>
+
+<ul class="nav nav-pills mb-3" id="resultTabs">
+    <li class="nav-item"><button type="button" class="nav-link active" data-type="">All</button></li>
+    <li class="nav-item"><button type="button" class="nav-link" data-type="Community">Community</button></li>
+    <li class="nav-item"><button type="button" class="nav-link" data-type="Awards">Awards</button></li>
+</ul>
+
+<table id="resultsTable" class="w-100"></table>
+
+@section Scripts {
+    <partial name="_DataTablesScripts" />
+    <script>
+        window.ResultsPage = {
+            urls: {
+                list: '@Url.Action("ResultsList", "Polls")',
+                details: '@Url.Action("Details", "Polls")'
+            }
+        };
+    </script>
+    <script src="~/js/poll-results.js" asp-append-version="true"></script>
+}
