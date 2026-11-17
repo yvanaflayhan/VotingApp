@@ -51,71 +51,82 @@
                                     <a class="nav-link dropdown-toggle @(controller == "Polls" && (action == "Community" || action == "Mine") ? "active" : "")"
                                        href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Community</a>
                                     <ul class="dropdown-menu border-0 shadow rounded-4 p-2">
-                                        <li><a class="dropdown-item rounded-3" asp-controller="Polls" asp-action="Community">Community polls</a></li>
-                                        <li><a class="dropdown-item rounded-3" asp-controller="Polls" asp-action="Mine">My polls</a></li>
-                                    </ul>
-                                </li>
-                            }
+                                        <li><a class="dropdown-item rounded-3" asp-controller="Polls"
+                                                   asp-action="Community">Community polls</a></li>
+                                            <li><a class="dropdown-item rounded-3" asp-controller="Polls" asp-action="Mine">My
+                                                polls</a></li>
+                                            </ul>
+                                        </li>
+                                    }
                             else
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link @Active("Polls", "Community")" asp-controller="Polls" asp-action="Community">Community</a>
-                                </li>
-                            }
+                                    {
+                                        <li class="nav-item">
+                                            <a class="nav-link @Active("Polls", "Community")" asp-controller="Polls"
+                                               asp-action="Community">Community</a>
+                                        </li>
+                                    }
 
-                            <li class="nav-item">
-                                <a class="nav-link @Active("Polls", "Awards")" asp-controller="Polls" asp-action="Awards">Awards</a>
-                            </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link @Active("Polls", "Awards")" asp-controller="Polls"
+                                           asp-action="Awards">Awards</a>
+                                    </li>
 
-                            @if (isAdmin)
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link @Active("Admin", "Users")" asp-controller="Admin" asp-action="Users">Users</a>
-                                </li>
-                            }
-                        </ul>
+                                    <li class="nav-item">
+                                        <a class="nav-link" asp-controller="Polls" asp-action="Results">Results</a>
+                                    </li>
 
-                        <div class="d-flex align-items-center">
-                            @if (isAuthenticated)
-                            {
-                                <div class="d-flex align-items-center gap-2 flex-wrap">
-                                    <span class="fw-medium text-secondary">Hello, @User.Identity!.Name</span>
-                                    <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
-                                        <button type="submit" class="btn btn-outline-dark btn-sm rounded-pill px-3">Logout</button>
-                                    </form>
+                                    @if (isAdmin)
+                                    {
+                                        <li class="nav-item">
+                                            <a class="nav-link @Active("Admin", "Users")" asp-controller="Admin"
+                                               asp-action="Users">Users</a>
+                                        </li>
+                                    }
+                                </ul>
+
+                                <div class="d-flex align-items-center">
+                                    @if (isAuthenticated)
+                                    {
+                                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                                            <span class="fw-medium text-secondary">Hello, @User.Identity!.Name</span>
+                                            <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
+                                                <button type="submit"
+                                                        class="btn btn-outline-dark btn-sm rounded-pill px-3">Logout</button>
+                                            </form>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <a class="btn btn-outline-dark btn-sm me-2" asp-controller="Account"
+                                           asp-action="Login">Login</a>
+                                        <a class="btn btn-primary btn-sm" asp-controller="Account" asp-action="Register">Register</a>
+                                    }
                                 </div>
-                            }
-                            else
-                            {
-                                <a class="btn btn-outline-dark btn-sm me-2" asp-controller="Account" asp-action="Login">Login</a>
-                                <a class="btn btn-primary btn-sm" asp-controller="Account" asp-action="Register">Register</a>
-                            }
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </nav>
-        </header>
-    }
+                    </nav>
+                </header>
+            }
 
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
-
-    @if (!hideChrome)
-    {
-        <footer class="border-top footer text-muted">
             <div class="container">
-                &copy; @DateTime.Now.Year - Voting_app - <a asp-controller="Home" asp-action="Privacy">Privacy</a>
+                <main role="main" class="pb-3">
+                    @RenderBody()
+                </main>
             </div>
-        </footer>
-    }
 
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
-    @await RenderSectionAsync("Scripts", required: false)
-</body>
+            @if (!hideChrome)
+            {
+                <footer class="border-top footer text-muted">
+                    <div class="container">
+                        &copy; @DateTime.Now.Year - Voting_app - <a asp-controller="Home" asp-action="Privacy">Privacy</a>
+                    </div>
+                </footer>
+            }
 
-</html>
+            <script src="~/lib/jquery/dist/jquery.min.js"></script>
+            <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+            <script src="~/js/site.js" asp-append-version="true"></script>
+            @await RenderSectionAsync("Scripts", required: false)
+        </body>
+
+    </html>

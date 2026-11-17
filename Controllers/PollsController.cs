@@ -23,6 +23,9 @@ namespace Voting_app.Controllers
 
         public IActionResult Awards() => ShowPolls(PollType.Awards);
 
+        // "Results": the finished polls and their winners (the data comes later, by AJAX)
+        public IActionResult Results() => View();
+
         // "My polls" is for users. The admin manages polls from the tables.
         [Authorize]
         public IActionResult Mine()
@@ -57,7 +60,6 @@ namespace Voting_app.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Vote(int pollId, int choiceId) =>
             ToJson(await _votes.VoteAsync(pollId, choiceId, CurrentUserId!, IsAdmin));
-
 
         //Create
         [Authorize]
