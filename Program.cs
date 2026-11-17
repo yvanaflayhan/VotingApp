@@ -41,6 +41,7 @@ builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IPollService, PollService>();
 builder.Services.AddScoped<IVoteService, VoteService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IResultsService, ResultsService>();
 
 #endregion
 
