@@ -18,10 +18,7 @@ public class ResultsService : IResultsService
 
     #region Reading
 
-    public async Task<PagedResult<PollResultItem>> GetFinishedAsync(
-        ResultsRequest request,
-        DateTime nowUtc
-    )
+    public async Task<PagedResult<PollResultItem>> GetFinishedAsync(ResultsRequest request, DateTime nowUtc)
     {
         //Finished polls of the last KeepDays days, optionally of one type
         var since = nowUtc.AddDays(-ResultsRules.KeepDays);
@@ -34,101 +31,43 @@ public class ResultsService : IResultsService
         //Search on the title
         var filteredQuery = finished;
         if (!string.IsNullOrWhiteSpace(request.SearchPattern))
-            filteredQuery = filteredQuery.Where(p =>
-                EF.Functions.ILike(p.Title, request.SearchPattern)
-            );
+            filteredQuery = filteredQuery.Where(p => EF.Functions.ILike(p.Title, request.SearchPattern));
 
         var filtered = await filteredQuery.CountAsync();
 
-        //The polls of this page, newest ending first (the Id keeps the order stable)
+        //The polls of this page (with their choices), newest ending first
         var page = await filteredQuery
-            .OrderByDescending(p => p.EndDate)
-            .ThenBy(p => p.Id)
-            .Skip(request.SafeStart)
-            .Take(request.SafeLength)
-            .Select(p => new PollRow
-            {
-                Id = p.Id,
-                Title = p.Title,
-                Type = p.Type.ToString(),
-                ImageUrl = p.ImagePath,
-                EndedAt = p.EndDate,
-                Choices = p
-                    .Choices.OrderBy(c => c.Id)
-                    .Select(c => new ChoiceRow
-                    {
-                        Id = c.Id,
-                        Text = c.Text,
-                        ImageUrl = c.ImagePath,
-                    })
-                    .ToList(),
-            })
+            .OrderByDescending(p => p.EndDate).ThenBy(p => p.Id)
+            .Skip(request.SafeStart).Take(request.SafeLength)
+            .Include(p => p.Choices)
+            .AsNoTracking()
             .ToListAsync();
 
         //Votes per choice for ALL the polls of this page: one query
         var counts = await _db.Votes.CountByChoiceAsync(page.Select(p => p.Id).ToList());
 
-        return new PagedResult<PollResultItem>(
-            total,
-            filtered,
-            page.Select(p => ToItem(p, counts)).ToList()
-        );
+        return new PagedResult<PollResultItem>(total, filtered, page.Select(p => ToItem(p, counts)).ToList());
     }
 
     #endregion
 
     #region Private methods
 
-    // Here the winner is decided. This is the only place that knows the rule.
-    private static PollResultItem ToItem(PollRow poll, Dictionary<int, int> counts)
+    private static PollResultItem ToItem(Poll poll, IReadOnlyDictionary<int, int> counts)
     {
-        var choices = poll
-            .Choices.Select(c => new ResultChoice
-            {
-                Id = c.Id,
-                Text = c.Text,
-                ImageUrl = c.ImageUrl,
-                Votes = counts.GetValueOrDefault(c.Id),
-            })
-            .ToList();
-
-        var total = choices.Sum(c => c.Votes);
-        var best = choices.Count == 0 ? 0 : choices.Max(c => c.Votes);
-
-        foreach (var c in choices)
-        {
-            c.Percent = total == 0 ? 0 : Math.Round(100.0 * c.Votes / total, 1);
-            c.IsWinner = best > 0 && c.Votes == best; // no votes = no winner; a tie = several winners
-        }
+        var choices = PollResults.Build(poll.Choices, counts);
+        PollResults.MarkWinners(choices);
 
         return new PollResultItem
         {
             Id = poll.Id,
             Title = poll.Title,
-            Type = poll.Type,
-            ImageUrl = poll.ImageUrl,
-            EndedAt = poll.EndedAt,
-            TotalVotes = total,
-            Choices = choices.OrderByDescending(c => c.Votes).ThenBy(c => c.Text).ToList(),
+            Type = poll.Type.ToString(),
+            ImageUrl = poll.ImagePath,
+            EndedAt = poll.EndDate,
+            TotalVotes = choices.Sum(c => c.Votes),
+            Choices = choices.OrderByDescending(c => c.Votes).ThenBy(c => c.Text).ToList()
         };
-    }
-
-    // Small private shapes for the database query (they never leave this file)
-    private class PollRow
-    {
-        public int Id { get; set; }
-        public string Title { get; set; } = "";
-        public string Type { get; set; } = "";
-        public string? ImageUrl { get; set; }
-        public DateTime EndedAt { get; set; }
-        public List<ChoiceRow> Choices { get; set; } = new();
-    }
-
-    private class ChoiceRow
-    {
-        public int Id { get; set; }
-        public string Text { get; set; } = "";
-        public string? ImageUrl { get; set; }
     }
 
     #endregion

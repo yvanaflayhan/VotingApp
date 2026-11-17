@@ -27,5 +27,14 @@ namespace Voting_app.Services
                 })
                 .ToList();
         }
+
+        // The choice(s) with the most votes win. Nobody voted = no winner. A tie = several winners.
+        public static void MarkWinners(List<OptionResult> results)
+        {
+            var best = results.Count == 0 ? 0 : results.Max(r => r.Votes);
+
+            foreach (var r in results)
+                r.IsWinner = best > 0 && r.Votes == best;
+        }
     }
 }
