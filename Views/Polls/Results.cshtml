@@ -6,22 +6,28 @@
     <partial name="_DataTablesStyles" />
 }
 
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+<div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
     <div>
-        <h2 class="fw-bold mb-0">Results</h2>
-        <span class="text-muted small" id="resultsChip"></span>
+        <h2 class="fw-bold mb-1">Results</h2>
+        <p class="text-muted small mb-2">Polls that ended in the last @ResultsRules.KeepDays days.</p>
+        <span class="stat-chip" id="resultsChip"></span>
     </div>
-    <input type="search" id="resultsSearch" class="form-control rounded-pill w-auto" placeholder="Search a poll..."
-           autocomplete="off" />
+    <div class="search-group">
+        <input type="search" id="resultsSearch" class="form-control search-input" placeholder="Search a poll..."
+               autocomplete="off" />
+        <button type="button" id="resultsSearchBtn" class="btn btn-primary rounded-pill px-4">Search</button>
+    </div>
 </div>
 
-<ul class="nav nav-pills mb-3" id="resultTabs">
+<ul class="nav nav-pills result-tabs mb-3" id="resultTabs">
     <li class="nav-item"><button type="button" class="nav-link active" data-type="">All</button></li>
     <li class="nav-item"><button type="button" class="nav-link" data-type="Community">Community</button></li>
     <li class="nav-item"><button type="button" class="nav-link" data-type="Awards">Awards</button></li>
 </ul>
 
-<table id="resultsTable" class="w-100"></table>
+<div class="cards-wrap">
+    <table id="resultsTable" class="cards-table"></table>
+</div>
 
 @section Scripts {
     <partial name="_DataTablesScripts" />
