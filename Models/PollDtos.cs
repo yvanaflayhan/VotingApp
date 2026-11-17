@@ -24,5 +24,6 @@ namespace Voting_app.Models
         public string? ImageUrl { get; set; }
         public int Votes { get; set; }
         public int Percent { get; set; }
+        public bool IsWinner { get; set; } //only result page use it 
     }
 }

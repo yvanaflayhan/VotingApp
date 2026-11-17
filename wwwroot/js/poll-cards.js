@@ -1,6 +1,6 @@
 // The polls page for users and guests: one card per row, loaded with DataTables (server-side).
 (() => {
-    const { esc, post, statusBadge, formatDate, formatDateTime, firstLetter, display, pollActions } = App;
+    const { esc, post, statusBadge, formatDate, formatDateTime, firstLetter, display, pollActions, growBars } = App;
     const cfg = window.PollsPage;
 
     const PAGE_SIZE = 4;
@@ -81,12 +81,6 @@
                 </div>
             </div>
         </div>`.trim();
-    }
-
-    // The bars start at 0 and grow to their value
-    function growBars(scope) {
-        requestAnimationFrame(() => requestAnimationFrame(() =>
-            scope.querySelectorAll('.progress-bar[data-w]').forEach(bar => bar.style.width = bar.dataset.w + '%')));
     }
 
     // Draws one card again, without reloading the table

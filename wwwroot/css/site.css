@@ -130,6 +130,10 @@ body {
   border-radius: var(--radius-pill);
 }
 
+.stat-chip:empty {
+  display: none;
+}
+
 /* Search box and its button, side by side */
 .search-group {
   display: flex;
@@ -255,6 +259,44 @@ body {
   padding: .7rem 0;
   margin-bottom: 1.5rem;
   box-shadow: 0 2px 16px rgba(17, 24, 39, .06);
+}
+
+/* The Community menu of a user: Community polls / My polls */
+.site-nav .dropdown-toggle::after {
+  display: none;
+  /* no arrow */
+}
+
+.site-nav .dropdown-menu {
+  min-width: 11rem;
+  margin-top: 0;
+  padding: .5rem;
+  border: 0;
+  border-radius: 1rem;
+  box-shadow: var(--shadow-card);
+}
+
+.site-nav .dropdown-item {
+  padding: .55rem 1rem;
+  border-radius: var(--radius-pill);
+  font-weight: 500;
+  color: var(--text-soft);
+}
+
+.site-nav .dropdown-item:hover,
+.site-nav .dropdown-item:focus,
+.site-nav .dropdown-item.active {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+/* Computer screens: the menu opens when the mouse is over "Community" */
+@media (min-width: 768px) {
+  .site-nav .dropdown:hover>.dropdown-menu {
+    display: block;
+    top: 100%;
+    left: 0;
+  }
 }
 
 /* The logo is plain text, not a link */
@@ -1059,4 +1101,84 @@ body.auth-page {
     animation: none;
     transition: none;
   }
+}
+
+/* ---------- 13. Results page ---------- */
+
+/* The tabs: All | Community | Awards (same look as the navbar links) */
+.result-tabs .nav-link {
+  color: var(--text-soft);
+  font-weight: 500;
+  border-radius: var(--radius-pill);
+}
+
+.result-tabs .nav-link:hover {
+  background: var(--hover);
+  color: var(--brand);
+}
+
+.result-tabs .nav-link.active {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+/* The winner box inside a card */
+.result-winner {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .7rem 1rem;
+  margin: .6rem 0 .9rem;
+  border-radius: 1rem;
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-light);
+}
+
+.result-winner.none {
+  background: var(--hover);
+  border-color: var(--line-strong);
+  color: var(--muted);
+}
+
+.result-trophy {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.result-label {
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.result-name {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  font-weight: 700;
+}
+
+.result-score {
+  margin-left: auto;
+  text-align: right;
+  font-size: .85rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.result-score strong {
+  display: block;
+  font-size: 1.15rem;
+  color: var(--brand);
+}
+
+/* In the list of choices, the winner is bold and has the strong bar */
+.opt-line.is-winner .opt-text {
+  font-weight: 700;
+}
+
+.opt-line.is-winner .progress-bar {
+  background: var(--brand-gradient-bar);
 }
